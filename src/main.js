@@ -38,7 +38,7 @@ import {
 } from './powerups.js';
 import { initParticles, updateParticles, emitParticles, clearParticles } from './particles.js';
 import { initAurora, updateAurora } from './aurora.js';
-import { initWeather, updateWeather, setWeather } from './weather.js';
+import { initWeather, updateWeather, setWeather, getCurrentWeather } from './weather.js';
 import { swayMountains } from './terrain.js';
 import {
   setIdleMode, updateIdleAnimation, triggerKnockback,
@@ -398,13 +398,14 @@ function gameLoop(now) {
 
     // Obstacle spawning & movement
     const difficulty = Math.floor(elapsed / 10);
-    spawnObstacle(scene, playerZ, difficulty);
+    spawnObstacle(scene, playerZ, difficulty, distance, getCurrentWeather());
     updateObstacles(delta, playerZ, currentSpeed);
 
     // Collision detection
     const penguin = getPenguinGroup();
     if (penguin && !isInvincible()) {
       for (const obs of getActiveObstacles()) {
+        if (obs.typeName === 'philosopherFog' || obs.typeName === 'windGust') continue;
         if (checkCollision(penguin.position, isPlayerSliding(), isPlayerJumping(), obs)) {
           if (isShieldActive()) {
             if (hitShield()) continue; // shield absorbed the hit
@@ -452,6 +453,25 @@ function gameLoop(now) {
               showToast('CLOSE!', 800);
               fillCombo(COMBO_FILL_NEAR_MISS);
             }
+          }
+        }
+      }
+    }
+
+    // Wind gust trigger — pushes player sideways
+    const penguinPos = getPenguinGroup()?.position;
+    if (penguinPos) {
+      for (const obs of getActiveObstacles()) {
+        if (obs.typeName !== 'windGust' || obs.triggered) continue;
+        const dz = penguinPos.z - obs.mesh.position.z;
+        if (dz > -2 && dz < 2) {
+          obs.triggered = true;
+          const pushDir = obs.windDirection;
+          const currentLane = getCurrentLane();
+          const targetLane = Math.max(0, Math.min(2, currentLane + pushDir));
+          if (targetLane !== currentLane) {
+            switchLane(pushDir);
+            triggerScreenShake(SCREEN_SHAKE_INTENSITY_LIGHT);
           }
         }
       }

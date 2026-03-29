@@ -424,6 +424,14 @@ export function autoCollectAllFish(penguinPos, scene) {
   return collected;
 }
 
+export function spawnFishAt(scene, z, lane) {
+  if (lane < 0 || lane >= LANE_POSITIONS.length) return;
+  const mesh = createFishMesh();
+  mesh.position.set(LANE_POSITIONS[lane], TERRAIN_Y + FISH_FLOAT_HEIGHT, z);
+  scene.add(mesh);
+  activeCollectibles.push({ mesh, type: 'fish', lane, collected: false, collectTime: 0 });
+}
+
 export function getNietzscheQuotes() {
   return QUOTE_DATA.map(q => q.fragments.join(' '));
 }
