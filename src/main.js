@@ -216,6 +216,8 @@ function startGame() {
 
   cleanupDread();
   cleanupCombo();
+  hideShieldVisual();
+  hideSlowTimeFilter();
   initCombo({ onTierUp: flashComboTierUp });
   initPowerups({
     onShieldBreak: () => {

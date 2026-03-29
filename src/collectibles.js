@@ -380,7 +380,7 @@ export function checkCollectiblePickup(penguinPos, penguinLane, scene) {
       col.collected = true;
       col.collectTime = 0;
       // Spawn visual effect
-      const effectColor = col.type === 'goldenFish' ? 0xffd700 : col.type === 'abyssOrb' ? 0x8800cc : col.type === 'quote' ? 0xffff88 : 0x4488ff;
+      const effectColor = col.type === 'goldenFish' ? 0xffd700 : col.type === 'abyssOrb' ? 0x8800cc : col.type === 'quote' ? 0xffff88 : col.type === 'shield' ? 0x64c8ff : col.type === 'magnet' ? 0x00e5ff : 0x4488ff;
       if (scene) spawnCollectEffect(scene, mesh.position.clone(), effectColor);
       collected.push({ type: col.type });
     }
