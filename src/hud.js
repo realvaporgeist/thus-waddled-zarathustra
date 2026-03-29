@@ -53,6 +53,28 @@ export function createHUD(onPause) {
   `;
   document.body.appendChild(comboContainer);
 
+  // Power-up icons (bottom-left)
+  const powerupIcons = document.createElement('div');
+  powerupIcons.id = 'powerup-icons';
+  powerupIcons.innerHTML = `
+    <div class="powerup-icon" id="pu-shield" style="display:none">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="currentColor"/></svg>
+      <svg class="pu-ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="100" stroke-dashoffset="0"/></svg>
+    </div>
+    <div class="powerup-icon" id="pu-magnet" style="display:none">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path d="M3 7v6a9 9 0 0018 0V7h-4v6a5 5 0 01-10 0V7H3z" fill="currentColor"/></svg>
+      <svg class="pu-ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="100" stroke-dashoffset="0"/></svg>
+    </div>
+  `;
+  document.body.appendChild(powerupIcons);
+
+  // Earned ability button (bottom-right)
+  const abilityBtn = document.createElement('button');
+  abilityBtn.id = 'ability-btn';
+  abilityBtn.style.display = 'none';
+  abilityBtn.textContent = '\u231B';
+  document.body.appendChild(abilityBtn);
+
   heartsEl = document.getElementById('hud-hearts');
   scoreEl = document.getElementById('hud-score');
   fishEl = document.getElementById('hud-fish');
@@ -91,6 +113,10 @@ export function showHUD(visible) {
   if (hudContainer) hudContainer.style.display = visible ? 'flex' : 'none';
   if (pauseBtn) pauseBtn.style.display = visible ? 'block' : 'none';
   if (comboContainer) comboContainer.style.display = visible ? 'block' : 'none';
+  const puIcons = document.getElementById('powerup-icons');
+  if (puIcons) puIcons.style.display = visible ? 'flex' : 'none';
+  const abilBtn = document.getElementById('ability-btn');
+  if (abilBtn && !visible) abilBtn.style.display = 'none';
 }
 
 export function showToast(text, duration = 2000) {
@@ -162,4 +188,42 @@ export function updateComboBar(meter, tier) {
 
 export function flashComboTierUp(tier) {
   showToast(`${tier.name.toUpperCase()} — ${tier.multiplier}x!`, 1500);
+}
+
+export function updatePowerupIcons(effects) {
+  const shield = document.getElementById('pu-shield');
+  const magnet = document.getElementById('pu-magnet');
+  if (shield) {
+    shield.style.display = effects.shield ? 'flex' : 'none';
+    if (effects.shield) {
+      const ring = shield.querySelector('.pu-ring circle');
+      if (ring) ring.style.strokeDashoffset = (1 - effects.shieldTimer / 20) * 100;
+    }
+  }
+  if (magnet) {
+    magnet.style.display = effects.magnet ? 'flex' : 'none';
+    if (effects.magnet) {
+      const ring = magnet.querySelector('.pu-ring circle');
+      if (ring) ring.style.strokeDashoffset = (1 - effects.magnetTimer / 8) * 100;
+    }
+  }
+}
+
+export function updateAbilityButton(slowTimeCharged, rushCharged, selected) {
+  const btn = document.getElementById('ability-btn');
+  if (!btn) return;
+  const hasAny = slowTimeCharged || rushCharged;
+  btn.style.display = hasAny ? 'flex' : 'none';
+  if (!hasAny) return;
+
+  if (slowTimeCharged && rushCharged) {
+    btn.textContent = selected === 'slowTime' ? '\u231B' : '\u26A1';
+    btn.className = 'ability-dual';
+  } else if (rushCharged) {
+    btn.textContent = '\u26A1';
+    btn.className = 'ability-rush';
+  } else {
+    btn.textContent = '\u231B';
+    btn.className = 'ability-slow';
+  }
 }

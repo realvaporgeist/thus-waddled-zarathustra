@@ -7,6 +7,8 @@ let onJump = null;
 let onSlide = null;
 let onAction = null;
 let onPause = null;
+let onAbility = null;
+let onAbilityHold = null;
 
 let touchStartX = 0;
 let touchStartY = 0;
@@ -19,10 +21,28 @@ export function initControls(callbacks) {
   onSlide = callbacks.onSlide;
   onAction = callbacks.onAction;
   onPause = callbacks.onPause;
+  onAbility = callbacks.onAbility;
+  onAbilityHold = callbacks.onAbilityHold;
 
   window.addEventListener('keydown', handleKeyDown);
   window.addEventListener('touchstart', handleTouchStart, { passive: false });
   window.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+  // Earned ability button
+  const abilityBtn = document.getElementById('ability-btn');
+  if (abilityBtn) {
+    let holdTimer = null;
+    let held = false;
+    abilityBtn.addEventListener('pointerdown', () => {
+      held = false;
+      holdTimer = setTimeout(() => { held = true; callbacks.onAbilityHold?.(); }, 500);
+    });
+    abilityBtn.addEventListener('pointerup', () => {
+      clearTimeout(holdTimer);
+      if (!held) callbacks.onAbility?.();
+    });
+    abilityBtn.addEventListener('pointerleave', () => clearTimeout(holdTimer));
+  }
 }
 
 function handleKeyDown(e) {
@@ -53,6 +73,9 @@ function handleKeyDown(e) {
     case 'Escape':
     case 'KeyP':
       onPause?.();
+      break;
+    case 'KeyE':
+      onAbility?.();
       break;
   }
 }

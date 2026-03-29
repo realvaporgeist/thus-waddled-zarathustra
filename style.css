@@ -648,3 +648,55 @@ body {
   50% { box-shadow: 0 0 16px rgba(255,215,0,0.8); }
 }
 .combo-pulse #combo-bar { animation: combo-glow 1.5s infinite; }
+
+/* Power-up icons */
+#powerup-icons {
+  position: fixed;
+  bottom: 44px;
+  left: 12px;
+  display: flex;
+  gap: 6px;
+  z-index: 100;
+  pointer-events: none;
+}
+.powerup-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+#pu-shield { color: #64c8ff; background: rgba(100,200,255,0.2); }
+#pu-magnet { color: #00e5ff; background: rgba(0,229,255,0.2); }
+.pu-ring {
+  position: absolute;
+  top: -3px; left: -3px;
+  width: 38px; height: 38px;
+  transform: rotate(-90deg);
+}
+.pu-ring circle { transition: stroke-dashoffset 0.2s linear; }
+
+#ability-btn {
+  position: fixed;
+  bottom: 40px;
+  right: 12px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 100;
+  background: radial-gradient(circle, #555, #333);
+  color: #fff;
+  touch-action: manipulation;
+}
+.ability-slow { background: radial-gradient(circle, #6a5acd, #483d8b) !important; }
+.ability-rush { background: radial-gradient(circle, #ffd700, #ff8c00) !important; box-shadow: 0 0 12px rgba(255,215,0,0.6); }
+.ability-dual { background: radial-gradient(circle, #ffd700, #ff8c00) !important; box-shadow: 0 0 16px rgba(255,215,0,0.8); }

@@ -28,7 +28,14 @@ import { getSelectedSkin } from './skins.js';
 import {
   initCombo, updateCombo, fillCombo, resetCombo, getComboMeter,
   getComboTier, getComboMultiplier, cleanupCombo,
+  isSlowTimeCharged, isRushCharged, consumeSlowTimeCharge, consumeRushCharge,
 } from './combo.js';
+import {
+  initPowerups, updatePowerups, getActiveEffects, getSpeedMultiplier,
+  getScoreMultiplier, isShieldActive, hitShield, isInvincibleFromPowerup,
+  isMagnetActive, isDiscoActive, activateSlowTime, activateRush,
+  cycleAbility, getSelectedAbility, cleanupPowerups,
+} from './powerups.js';
 import { initParticles, updateParticles, emitParticles, clearParticles } from './particles.js';
 import { initAurora, updateAurora } from './aurora.js';
 import { initWeather, updateWeather, setWeather } from './weather.js';
@@ -42,7 +49,7 @@ import {
 } from './scene.js';
 import {
   bounceScore, shakeHeart, pulseLastHeart, updateDreadTimerBar,
-  updateComboBar, flashComboTierUp,
+  updateComboBar, flashComboTierUp, updatePowerupIcons, updateAbilityButton,
 } from './hud.js';
 import {
   CAMERA_OFFSET, CAMERA_LOOK_AHEAD, BASE_SPEED, SPEED_INCREMENT,
@@ -144,7 +151,34 @@ initControls({
   onSlide: () => { if (gameState === 'playing') slide(); },
   onAction: () => { /* reserved for future use */ },
   onPause: () => { if (gameState === 'playing' || gameState === 'paused') togglePause(); },
+  onAbility: () => {
+    if (gameState !== 'playing') return;
+    if (isSlowTimeCharged() && isRushCharged()) {
+      cycleAbility();
+    } else {
+      activateSelectedAbility();
+    }
+  },
+  onAbilityHold: () => {
+    if (gameState !== 'playing') return;
+    activateSelectedAbility();
+  },
 });
+
+// ---------------------------------------------------------------------------
+// Earned ability helper
+// ---------------------------------------------------------------------------
+function activateSelectedAbility() {
+  const sel = getSelectedAbility();
+  const effects = getActiveEffects();
+  if (sel === 'slowTime' && isSlowTimeCharged() && !effects.slowTime) {
+    consumeSlowTimeCharge();
+    activateSlowTime();
+  } else if (sel === 'rush' && isRushCharged() && !effects.rush) {
+    consumeRushCharge();
+    activateRush();
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Start / restart helpers
@@ -176,6 +210,13 @@ function startGame() {
   cleanupDread();
   cleanupCombo();
   initCombo({ onTierUp: flashComboTierUp });
+  initPowerups({
+    onShieldBreak: () => { /* will add particles in Task 4 */ },
+    onDiscoStart: () => { /* will add disco visuals in Task 5 */ },
+    onDiscoEnd: () => { /* will add disco cleanup in Task 5 */ },
+    onEffectStart: (key) => { /* will add visuals per power-up in Task 4 */ },
+    onEffectEnd: (key) => { /* will add cleanup per power-up in Task 4 */ },
+  });
   lastDamageDistanceForCombo = 0;
   clearParticles();
 
@@ -205,6 +246,7 @@ function gameOver() {
   stopMusic();
   cleanupDread();
   cleanupCombo();
+  cleanupPowerups();
   showHUD(false);
 
   const quickDeath = elapsed < 5;
@@ -281,14 +323,16 @@ function gameLoop(now) {
     speed = Math.min(BASE_SPEED + Math.floor(elapsed / 10) * SPEED_INCREMENT, MAX_SPEED);
 
     const dreadMultiplier = getDreadSpeedMultiplier();
-    const currentSpeed = speed * dreadMultiplier;
+    const powerupSpeedMult = getSpeedMultiplier();
+    const currentSpeed = speed * dreadMultiplier * powerupSpeedMult;
 
     playerZ -= currentSpeed * delta;
 
     distance += currentSpeed * delta;
     const comboMult = getComboMultiplier();
     const dreadScoreMult = isDreadActive() ? DREAD_MULTIPLIER : 1;
-    score += currentSpeed * delta * POINTS_PER_METER * comboMult * dreadScoreMult;
+    const powerupScoreMult = getScoreMultiplier();
+    score += currentSpeed * delta * POINTS_PER_METER * comboMult * dreadScoreMult * powerupScoreMult;
     updateScore(score);
 
     updatePenguin(delta, currentSpeed);
@@ -296,6 +340,12 @@ function gameLoop(now) {
     updateDread(delta);
     updateCombo(delta);
     updateComboBar(getComboMeter(), getComboTier());
+
+    // Update power-ups
+    updatePowerups(delta);
+    const effects = getActiveEffects();
+    updatePowerupIcons(effects);
+    updateAbilityButton(isSlowTimeCharged(), isRushCharged(), getSelectedAbility());
 
     if (isDreadActive()) {
       const dreadProgress = 1 - (getDreadTimer() / DREAD_DURATION);
@@ -320,6 +370,10 @@ function gameLoop(now) {
     if (penguin && !isInvincible()) {
       for (const obs of getActiveObstacles()) {
         if (checkCollision(penguin.position, isPlayerSliding(), isPlayerJumping(), obs)) {
+          if (isShieldActive()) {
+            if (hitShield()) continue; // shield absorbed the hit
+          }
+          if (isInvincibleFromPowerup()) continue; // rush/disco invincibility
           const damage = isDreadActive() ? DREAD_DAMAGE_MULTIPLIER : 1;
           playHit();
           const shakeStrength = isDreadActive() ? SCREEN_SHAKE_INTENSITY_HEAVY : SCREEN_SHAKE_INTENSITY_LIGHT;
