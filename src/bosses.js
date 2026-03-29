@@ -31,7 +31,7 @@ let onTitanStomp = null;
 let lastManTimer = 0;
 let lastManMesh = null;
 
-function spawnLastManVisuals(scene) {
+function spawnLastManVisuals(scene, playerZ) {
   lastManTimer = 0;
   const group = new THREE.Group();
   const bodyGeo = new THREE.CylinderGeometry(0.8, 1.2, 3, 8);
@@ -43,13 +43,23 @@ function spawnLastManVisuals(scene) {
   const head = new THREE.Mesh(headGeo, bodyMat);
   head.position.y = 3.3;
   group.add(head);
-  group.position.set(0, TERRAIN_Y, -120);
+  group.position.set(0, TERRAIN_Y, playerZ - 120);
   scene.add(group);
   lastManMesh = group;
 }
 
+function disposeMeshRecursive(obj) {
+  obj.traverse(child => {
+    if (child.geometry) child.geometry.dispose();
+    if (child.material) {
+      if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+      else child.material.dispose();
+    }
+  });
+}
+
 function cleanupLastManVisuals(scene) {
-  if (lastManMesh) { scene.remove(lastManMesh); lastManMesh = null; }
+  if (lastManMesh) { scene.remove(lastManMesh); disposeMeshRecursive(lastManMesh); lastManMesh = null; }
 }
 
 function updateLastMan(delta, playerZ) {
@@ -73,7 +83,7 @@ let serpentMesh = null;
 let serpentDistance = 30;
 let serpentHits = 0;
 
-function spawnSerpentVisuals(scene) {
+function spawnSerpentVisuals(scene, _playerZ) {
   serpentDistance = 30;
   serpentHits = 0;
   const group = new THREE.Group();
@@ -105,7 +115,7 @@ function updateSerpent(delta, playerZ) {
 }
 
 function cleanupSerpentVisuals(scene) {
-  if (serpentMesh) { scene.remove(serpentMesh); serpentMesh = null; }
+  if (serpentMesh) { scene.remove(serpentMesh); disposeMeshRecursive(serpentMesh); serpentMesh = null; }
 }
 
 export function notifySerpentHit() {
@@ -154,7 +164,7 @@ let titanMesh = null;
 let titanStompTimer = 0;
 let titanSpikeTimer = 0;
 
-function spawnTitanVisuals(scene) {
+function spawnTitanVisuals(scene, playerZ) {
   titanStompTimer = 0;
   titanSpikeTimer = 0;
   const group = new THREE.Group();
@@ -170,13 +180,13 @@ function spawnTitanVisuals(scene) {
   const head = new THREE.Mesh(headGeo, bodyMat);
   head.position.y = 12;
   group.add(head);
-  group.position.set(0, TERRAIN_Y, -100);
+  group.position.set(0, TERRAIN_Y, playerZ - 100);
   scene.add(group);
   titanMesh = group;
 }
 
 function cleanupTitanVisuals(scene) {
-  if (titanMesh) { scene.remove(titanMesh); titanMesh = null; }
+  if (titanMesh) { scene.remove(titanMesh); disposeMeshRecursive(titanMesh); titanMesh = null; }
 }
 
 function updateIceTitan(delta, playerZ) {
@@ -204,12 +214,13 @@ let eternalReturnQueue = [];
 let eternalReturnTimer = 0;
 let eternalReturnStarted = false;
 
+const REPLAYABLE_TYPES = ['iceBlock', 'iceSpike', 'snowball', 'tombstone', 'book', 'eternalRing', 'crevasse'];
+
 function startEternalReturn() {
   const history = getObstacleHistory();
-  eternalReturnQueue = history.slice(-30).map((h, i) => ({
-    ...h,
-    delay: i * 0.5,
-  }));
+  eternalReturnQueue = history.slice(-30)
+    .filter(h => REPLAYABLE_TYPES.includes(h.typeName) && h.lane >= 0 && h.lane <= 2)
+    .map((h, i) => ({ ...h, delay: i * 0.5 }));
   eternalReturnTimer = 0;
   eternalReturnStarted = true;
 }
@@ -221,8 +232,6 @@ function updateEternalReturn(delta, playerZ) {
   eternalReturnTimer += delta;
   while (eternalReturnQueue.length > 0 && eternalReturnTimer >= eternalReturnQueue[0].delay) {
     const item = eternalReturnQueue.shift();
-    // Skip multi-lane obstacles that don't have a valid single lane
-    if (item.lane < 0 || item.lane > 2) continue;
     spawnBossObstacle(bossScene, playerZ - 60, item.lane, item.typeName);
   }
 }
@@ -303,7 +312,7 @@ export function updateBosses(delta, distance, playerZ) {
   switch (bossState) {
     case 'idle':
       if (distance >= nextBossDistance) {
-        startBossEncounter(distance);
+        startBossEncounter(distance, playerZ);
       }
       break;
 
@@ -337,7 +346,7 @@ export function updateBosses(delta, distance, playerZ) {
   }
 }
 
-function startBossEncounter(distance) {
+function startBossEncounter(distance, playerZ) {
   const nextType = lastBossType === 'gauntlet' ? 'chase' : 'gauntlet';
   const pool = nextType === 'gauntlet' ? GAUNTLET_BOSSES : CHASE_BOSSES;
   const available = pool.filter(b => distance >= b.unlockDist);
@@ -355,8 +364,8 @@ function startBossEncounter(distance) {
   bossState = 'warning';
   bossTimer = BOSS_WARNING_DURATION;
 
-  // Spawn boss visuals
-  if (currentBoss.spawnVisuals) currentBoss.spawnVisuals(bossScene);
+  // Spawn boss visuals (pass playerZ so meshes are positioned relative to the player)
+  if (currentBoss.spawnVisuals) currentBoss.spawnVisuals(bossScene, playerZ);
 
   // Reset boss-specific timers for bosses without spawnVisuals
   if (currentBoss.id === 'paleCriminal') resetPaleCriminal();

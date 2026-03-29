@@ -31,7 +31,7 @@ export function setObstacleDrawDistance(mult) {
 }
 
 export function getObstacleHistory() {
-  return obstacleHistory;
+  return obstacleHistory.slice();
 }
 
 export function spawnBossObstacle(scene, worldZ, lane, typeName) {
@@ -460,5 +460,6 @@ export function getActiveObstacles() {
 export function clearObstacles(scene) {
   for (const obs of activeObstacles) { scene.remove(obs.mesh); }
   activeObstacles.length = 0;
+  obstacleHistory.length = 0;
   nextSpawnZ = -20;
 }

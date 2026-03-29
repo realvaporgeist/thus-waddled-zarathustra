@@ -133,11 +133,8 @@ export const BOSS_DURATIONS = {
   eternalReturn: 18,
 };
 
-export const SERPENT_SPEED_MULT = 1.4;
 export const SERPENT_MAX_HITS = 3;
 export const TITAN_STOMP_INTERVAL = 3;
-export const TITAN_SPIKE_SPEED_MULT = 1.8;
-export const ETERNAL_RETURN_SPEED_MULT = 1.3;
 
 // Dread mode
 export const DREAD_DURATION = 18;

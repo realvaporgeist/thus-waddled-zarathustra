@@ -232,6 +232,7 @@ export function updateAbilityButton(slowTimeCharged, rushCharged, selected) {
 // Boss HUD
 // ---------------------------------------------------------------------------
 export function showBossWarning(boss) {
+  hideBossWarning();
   const warning = document.createElement('div');
   warning.id = 'boss-warning';
   warning.innerHTML = `
@@ -247,6 +248,7 @@ export function hideBossWarning() {
 }
 
 export function showBossHealthBar(boss) {
+  hideBossBar();
   const bar = document.createElement('div');
   bar.id = 'boss-bar';
   bar.innerHTML = `
