@@ -83,44 +83,45 @@ export function initSplash(canvas) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setClearColor(0x000000);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.7;
+  renderer.toneMappingExposure = 1.2;
 
   splashScene = new THREE.Scene();
-  splashScene.fog = new THREE.FogExp2(0x050010, 0.35);
+  splashScene.fog = new THREE.FogExp2(0x050010, 0.15);
 
-  camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 50);
-  camera.position.set(0.5, 0.65, 1.3);
-  camera.lookAt(-0.1, 0.55, -1);
+  camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 50);
+  // Close-up from behind-right, low angle looking up at the penguin
+  camera.position.set(0.4, 0.5, 1.0);
+  camera.lookAt(0, 0.6, -0.5);
 
-  // Dark cold ambient
-  splashScene.add(new THREE.AmbientLight(0x111122, 0.3));
+  // Ambient — just enough to read the penguin's shape
+  splashScene.add(new THREE.AmbientLight(0x222244, 0.6));
 
-  // Blue-purple rim light from behind-left — creates silhouette edge
-  const rimLight = new THREE.DirectionalLight(0x4466cc, 1.4);
-  rimLight.position.set(-2, 3, -4);
+  // Strong blue-purple rim light from behind — the main silhouette edge
+  const rimLight = new THREE.DirectionalLight(0x6688ff, 3.0);
+  rimLight.position.set(-1, 2, -3);
   splashScene.add(rimLight);
 
+  // Second rim from the other side for double-edge silhouette
+  const rimLight2 = new THREE.DirectionalLight(0x8844cc, 1.5);
+  rimLight2.position.set(2, 1, -2);
+  splashScene.add(rimLight2);
+
   // Red-purple abyss glow from below/ahead
-  abyssGlow = new THREE.PointLight(0x660033, 1.5, 8);
-  abyssGlow.position.set(0, -0.5, -2);
+  abyssGlow = new THREE.PointLight(0x880044, 2.5, 6);
+  abyssGlow.position.set(0, -0.3, -1.5);
   splashScene.add(abyssGlow);
 
-  // Subtle cool fill from the right
-  const fillLight = new THREE.DirectionalLight(0x223344, 0.3);
-  fillLight.position.set(3, 1, 2);
-  splashScene.add(fillLight);
-
-  // Dark ground plane for grounding
+  // Dark ground plane
   const groundGeo = new THREE.PlaneGeometry(20, 20);
-  const groundMat = new THREE.MeshStandardMaterial({ color: 0x080010, roughness: 0.95 });
+  const groundMat = new THREE.MeshStandardMaterial({ color: 0x0a0015, roughness: 0.9 });
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = 0;
   splashScene.add(ground);
 
-  // Penguin facing away into the void
+  // Penguin facing away into the void, slightly turned for 3/4 profile
   penguin = createSplashPenguin();
-  penguin.rotation.y = Math.PI;
+  penguin.rotation.y = Math.PI * 0.88;
   splashScene.add(penguin);
 
   // Animation
@@ -133,9 +134,9 @@ export function initSplash(canvas) {
     penguin.scale.y = 1 + Math.sin(elapsed * 1.5) * 0.008;
 
     // Very slow camera drift
-    camera.position.x = 0.5 + Math.sin(elapsed * 0.12) * 0.06;
-    camera.position.y = 0.65 + Math.cos(elapsed * 0.08) * 0.03;
-    camera.lookAt(-0.1, 0.55, -1);
+    camera.position.x = 0.4 + Math.sin(elapsed * 0.12) * 0.05;
+    camera.position.y = 0.5 + Math.cos(elapsed * 0.08) * 0.02;
+    camera.lookAt(0, 0.6, -0.5);
 
     // Pulsing abyss glow
     abyssGlow.intensity = 1.5 + Math.sin(elapsed * 0.7) * 0.5;

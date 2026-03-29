@@ -175,21 +175,10 @@ body {
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12vh 20px 8vh;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8vh;
   pointer-events: none;
-}
-
-.splash-title {
-  font-size: clamp(36px, 10vw, 72px);
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.07);
-  text-align: center;
-  letter-spacing: 6px;
-  line-height: 1;
-  text-transform: uppercase;
 }
 
 .splash-prompt {
