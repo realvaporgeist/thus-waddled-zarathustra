@@ -66,6 +66,14 @@ export const SKINS = [
     metallic: true,
     unlock: { stat: 'totalAchievements', value: 14, label: 'Unlock 14 achievements' },
   },
+  {
+    id: 'disco',
+    name: 'Disco Penguin',
+    desc: 'Trigger disco mode 3 times',
+    colors: { body: 0xff00ff, belly: 0xffff00, head: 0x00ffff, beak: 0xff8800, feet: 0xff0088, wings: 0x8800ff },
+    unlock: { stat: 'totalDiscoTriggers', value: 3, label: '3 disco modes' },
+    discoBall: true,
+  },
 ];
 
 const SKINS_KEY = 'np_skins';

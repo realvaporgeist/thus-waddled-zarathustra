@@ -159,6 +159,25 @@ export function applySkin(skin) {
     m.metalness = skin.metallic ? 0.7 : 0;
     m.roughness = skin.metallic ? 0.3 : (m === bellyMat ? 0.5 : 0.6);
   }
+
+  // Disco ball accessory
+  const existingBall = penguinGroup.getObjectByName('discoBall');
+  if (existingBall) {
+    penguinGroup.remove(existingBall);
+    existingBall.geometry.dispose();
+    existingBall.material.dispose();
+  }
+  if (skin.discoBall) {
+    const ballGeo = new THREE.IcosahedronGeometry(0.15, 1);
+    const ballMat = new THREE.MeshStandardMaterial({
+      color: 0xcccccc, metalness: 0.9, roughness: 0.1,
+      emissive: 0xffffff, emissiveIntensity: 0.2,
+    });
+    const ball = new THREE.Mesh(ballGeo, ballMat);
+    ball.position.y = PENGUIN_HEIGHT + 0.4;
+    ball.name = 'discoBall';
+    penguinGroup.add(ball);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -280,6 +299,9 @@ export function updatePenguin(delta, speed) {
     leftFoot.position.z = 0.05; rightFoot.position.z = 0.05;
     leftWing.rotation.z = 0; rightWing.rotation.z = 0;
   }
+
+  const discoBall = penguinGroup?.getObjectByName('discoBall');
+  if (discoBall) discoBall.rotation.y += delta * 3;
 }
 
 export function switchLane(dir) {

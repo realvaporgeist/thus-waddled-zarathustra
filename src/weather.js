@@ -28,6 +28,12 @@ let crossfading = false;
 let dreadOverride = false;
 let savedWeather = null;
 
+let onWeatherChange = null;
+
+export function setWeatherChangeCallback(cb) {
+  onWeatherChange = cb;
+}
+
 // Weather gameplay state
 let driftDirection = 0;
 let driftChangeTimer = 0;
@@ -138,9 +144,11 @@ export function updateWeather(delta) {
 
     if (t >= 1) {
       crossfading = false;
+      const previousWeather = currentWeather;
       currentWeather = nextWeather;
       nextWeather = null;
       weatherTimer = WEATHER_CHANGE_MIN + Math.random() * (WEATHER_CHANGE_MAX - WEATHER_CHANGE_MIN);
+      if (onWeatherChange) onWeatherChange(previousWeather, currentWeather);
     }
   } else {
     weatherTimer -= delta;

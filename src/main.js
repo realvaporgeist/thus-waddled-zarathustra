@@ -38,7 +38,7 @@ import {
 } from './powerups.js';
 import { initParticles, updateParticles, emitParticles, clearParticles } from './particles.js';
 import { initAurora, updateAurora } from './aurora.js';
-import { initWeather, updateWeather, setWeather, getCurrentWeather, getWeatherModifiers, updateWeatherGameplay } from './weather.js';
+import { initWeather, updateWeather, setWeather, getCurrentWeather, getWeatherModifiers, updateWeatherGameplay, setWeatherChangeCallback } from './weather.js';
 import { swayMountains } from './terrain.js';
 import {
   setIdleMode, updateIdleAnimation, triggerKnockback,
@@ -61,7 +61,7 @@ import {
 import {
   initBosses, updateBosses, isBossActive, isBossEncounter,
   getBossState, getCurrentBoss, getBossTimer, notifyBossHit,
-  cleanupBosses, notifySerpentHit,
+  cleanupBosses, notifySerpentHit, getAllBossesDefeated,
 } from './bosses.js';
 import {
   CAMERA_OFFSET, CAMERA_LOOK_AHEAD, BASE_SPEED, SPEED_INCREMENT,
@@ -100,6 +100,10 @@ let lastDamageDistance = 0; // distance at last damage
 let longestNoDamage = 0;
 let lastDamageDistanceForCombo = 0;
 let discoTriggeredThisRun = false;
+let reachedUbermenschThisRun = false;
+let blizzardsSurvivedThisRun = 0;
+let shieldsBrokenThisRun = 0;
+let cleanBossDefeatThisRun = false;
 let weatherScoreBonus = 1;
 
 // Camera state machine
@@ -235,12 +239,20 @@ function startGame() {
   stopDiscoVisuals();
   setAuroraDiscoMode(false);
   discoTriggeredThisRun = false;
-  initCombo({ onTierUp: flashComboTierUp });
+  reachedUbermenschThisRun = false;
+  blizzardsSurvivedThisRun = 0;
+  shieldsBrokenThisRun = 0;
+  cleanBossDefeatThisRun = false;
+  initCombo({ onTierUp: (tier) => {
+    flashComboTierUp(tier);
+    if (tier.name === 'Übermensch') reachedUbermenschThisRun = true;
+  } });
   initPowerups({
     onShieldBreak: () => {
       hideShieldVisual();
       emitParticles({ ...SHIELD_SHATTER_PARTICLES, position: getPenguinGroup().position.clone() });
       showToast('SHIELD SHATTERED', 1000);
+      shieldsBrokenThisRun++;
     },
     onDiscoStart: () => {
       startDiscoVisuals();
@@ -280,6 +292,10 @@ function startGame() {
   const gameWeathers = ['lightSnow', 'blizzard', 'clearAurora', 'fog'];
   setWeather(gameWeathers[Math.floor(Math.random() * gameWeathers.length)]);
 
+  setWeatherChangeCallback((prev, _next) => {
+    if (prev === 'blizzard') blizzardsSurvivedThisRun++;
+  });
+
   initBosses(scene, {
     onBossWarning: (boss) => {
       showBossWarning(boss);
@@ -291,6 +307,7 @@ function startGame() {
     onBossDefeat: (boss, wasHit) => {
       hideBossBar();
       showToast(`${boss.name} — SURVIVED!`, 2500);
+      if (!wasHit) cleanBossDefeatThisRun = true;
       if (wasHit) resetCombo();
       fillCombo(COMBO_FILL_BOSS_SURVIVE);
     },
@@ -330,6 +347,7 @@ function gameOver() {
     goldenFishThisRun: goldenFishCount,
     distance,
     score,
+    discoTriggered: discoTriggeredThisRun,
   });
 
   const runStats = {
@@ -345,6 +363,12 @@ function gameOver() {
     maxSpeedReached,
     quickDeath,
     longestNoDamage,
+    discoTriggered: discoTriggeredThisRun,
+    uniqueBossesDefeated: getAllBossesDefeated().size,
+    reachedUbermensch: reachedUbermenschThisRun,
+    blizzardsSurvived: blizzardsSurvivedThisRun,
+    shieldsBroken: shieldsBrokenThisRun,
+    cleanBossDefeat: cleanBossDefeatThisRun,
   };
   newAchievements = checkAchievements(runStats);
 

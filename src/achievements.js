@@ -32,6 +32,15 @@ const MILESTONE_ACHIEVEMENTS = [
   { id: 'speed_demon', name: 'Speed Demon', description: 'Reach max speed', flavor: 'Faster than thought itself.', check: s => s.maxSpeedReached },
   { id: 'nihilist', name: 'Nihilist', description: 'Die within 5 seconds', flavor: 'Nothing matters. Especially survival.', check: s => s.quickDeath },
   { id: 'unstoppable', name: 'Unstoppable', description: 'Run 500m without taking damage', flavor: 'An unstoppable force meets no object.', check: s => s.longestNoDamage >= 500 },
+
+  // Phase 2
+  { id: 'longWalk70k', name: '70,000 Meters From Home', description: 'Travel 70,000m in a single run', flavor: 'The march continues...', check: s => s.distance >= 70000 },
+  { id: 'discoMode', name: 'Dance of Eternity', description: 'Trigger disco mode', flavor: 'All four at once!', check: s => s.discoTriggered },
+  { id: 'bossSlayer', name: 'Beyond All Monsters', description: 'Defeat all 5 boss types', flavor: 'What does not kill you...', check: s => s.uniqueBossesDefeated >= 5 },
+  { id: 'comboMax', name: 'The Übermensch Cometh', description: 'Reach Übermensch combo tier', flavor: 'Man is something to be surpassed.', check: s => s.reachedUbermensch },
+  { id: 'weatherSurvivor', name: 'Storm Walker', description: 'Survive 3 blizzards in one run', flavor: 'Love of fate.', check: s => s.blizzardsSurvived >= 3 },
+  { id: 'shieldBreaker', name: 'Glass Philosophy', description: 'Break 10 shields in one run', flavor: 'Fragile truths.', check: s => s.shieldsBroken >= 10 },
+  { id: 'noHitBoss', name: 'Untouchable', description: 'Defeat any boss without taking damage', flavor: 'Perfection in adversity.', check: s => s.cleanBossDefeat },
 ];
 
 // ---------------------------------------------------------------------------
@@ -165,6 +174,7 @@ export function incrementPersistentStats(runStats) {
   stats.totalDistance += runStats.distance || 0;
   if (runStats.score > stats.highestScore) stats.highestScore = runStats.score;
   if (runStats.distance > stats.longestRun) stats.longestRun = runStats.distance;
+  if (runStats.discoTriggered) stats.totalDiscoTriggers = (stats.totalDiscoTriggers || 0) + 1;
   stats.completedQuotes = getCompletedQuoteCount();
   stats.totalAchievements = getUnlockedAchievements().length;
   saveData(STATS_KEY, stats);
