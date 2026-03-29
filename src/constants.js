@@ -36,6 +36,22 @@ export const BASE_OBSTACLE_INTERVAL = 1.5;
 export const MIN_OBSTACLE_INTERVAL = 0.5;
 export const SNOWBALL_SPEED_MULT = 1.4;
 
+// New Obstacles
+export const ICE_SPIKE_SPEED_MULT = 1.6;
+export const ICE_SPIKE_HEIGHT = 2.0;
+export const ICE_SPIKE_HALF_WIDTH = 0.6;
+export const ICE_SPIKE_TELEGRAPH = 0.8;
+export const ICE_WALL_HEIGHT = 2.5;
+export const ICE_WALL_TELEGRAPH = 1.2;
+export const ICE_WALL_MIN_DISTANCE = 500;
+export const WIND_GUST_PUSH_DURATION = 0.4;
+export const WIND_GUST_TELEGRAPH = 0.6;
+export const WIND_GUST_MIN_DISTANCE = 800;
+export const CREVASSE_MIN_DISTANCE = 300;
+export const PHILOSOPHER_FOG_DEPTH = 15;
+export const PHILOSOPHER_FOG_MIN_DISTANCE = 800;
+export const MAX_COMPLEX_OBSTACLES = 2;
+
 // Collectibles
 export const FISH_SPAWN_CHANCE = 0.4;
 export const GOLDEN_FISH_CHANCE = 0.05;
@@ -55,6 +71,73 @@ export const POINTS_PER_METER = 1;
 export const FISH_POINTS = 100;
 export const GOLDEN_FISH_POINTS = 500;
 export const DREAD_MULTIPLIER = 2;
+
+// Combo System
+export const COMBO_TIERS = [
+  { name: 'Mortal', multiplier: 1.0, threshold: 0, color: '#888888' },
+  { name: 'Camel', multiplier: 1.5, threshold: 0.25, color: '#cd7f32' },
+  { name: 'Lion', multiplier: 2.5, threshold: 0.50, color: '#c0c0c0' },
+  { name: 'Free Spirit', multiplier: 4.0, threshold: 0.75, color: '#ffd700' },
+  { name: 'Übermensch', multiplier: 6.0, threshold: 1.0, color: '#ffd700' },
+];
+export const COMBO_FILL_NEAR_MISS = 0.15;
+export const COMBO_FILL_FISH = 0.05;
+export const COMBO_FILL_GOLDEN_FISH = 0.12;
+export const COMBO_FILL_BOSS_SURVIVE = 0.25;
+export const COMBO_FILL_NO_DAMAGE_100M = 0.03;
+export const COMBO_DRAIN_BASE = 0.08;
+export const COMBO_DRAIN_MULTIPLIERS = [1.0, 1.0, 1.5, 2.0, 2.5];
+
+// Power-ups — Path Pickups
+export const SHIELD_SPAWN_CHANCE = 0.03;
+export const SHIELD_COOLDOWN = 30;
+export const SHIELD_MAX_DURATION = 20;
+export const MAGNET_SPAWN_CHANCE = 0.025;
+export const MAGNET_COOLDOWN = 35;
+export const MAGNET_DURATION = 8;
+export const MAGNET_PULL_SPEED = 0.5;
+
+// Power-ups — Earned Abilities
+export const SLOW_TIME_CHARGE_TIER = 2;
+export const SLOW_TIME_DURATION = 5;
+export const SLOW_TIME_FACTOR = 0.4;
+export const RUSH_CHARGE_TIER = 4;
+export const RUSH_DURATION = 4;
+export const RUSH_SCORE_MULTIPLIER = 3;
+export const ABILITY_HOLD_THRESHOLD = 0.5;
+
+// Disco Mode
+export const DISCO_SCORE_MULTIPLIER = 10;
+export const DISCO_STROBE_INTERVAL = 0.4;
+
+// Boss Encounters
+export const BOSS_FIRST_DISTANCE = 2000;
+export const BOSS_MIN_INTERVAL = 2500;
+export const BOSS_MAX_INTERVAL = 3000;
+export const BOSS_WARNING_DURATION = 2;
+export const BOSS_DEFEAT_DURATION = 1.5;
+
+export const BOSS_UNLOCK_DISTANCES = {
+  lastMan: 2000,
+  abyssSerpent: 3500,
+  paleCriminal: 5000,
+  iceTitan: 7000,
+  eternalReturn: 10000,
+};
+
+export const BOSS_DURATIONS = {
+  lastMan: 12,
+  abyssSerpent: 15,
+  paleCriminal: 15,
+  iceTitan: 15,
+  eternalReturn: 18,
+};
+
+export const SERPENT_SPEED_MULT = 1.4;
+export const SERPENT_MAX_HITS = 3;
+export const TITAN_STOMP_INTERVAL = 3;
+export const TITAN_SPIKE_SPEED_MULT = 1.8;
+export const ETERNAL_RETURN_SPEED_MULT = 1.3;
 
 // Dread mode
 export const DREAD_DURATION = 18;
@@ -96,6 +179,16 @@ export const SNOW_AREA_HEIGHT = 25;
 export const SNOW_AREA_DEPTH = 60;
 export const BLIZZARD_WIND_DRIFT = 3;
 
+// Weather Gameplay Effects
+export const BLIZZARD_DRIFT_SPEED = 0.3;
+export const BLIZZARD_DRIFT_CHANGE_MIN = 5;
+export const BLIZZARD_DRIFT_CHANGE_MAX = 8;
+export const BLIZZARD_ICE_SPIKE_SPEED_BONUS = 0.1;
+export const FOG_DRAW_DISTANCE_MULT = 0.6;
+export const CLEAR_FISH_SPAWN_BONUS = 0.3;
+export const CLEAR_GOLDEN_FISH_MULT = 2;
+export const CLEAR_SCORE_BONUS = 0.1;
+
 // Weather fog/sky per type
 export const WEATHER_FOG = {
   lightSnow:   { skyColor: 0xa8c4d8, fogColor: 0xb0c8d6, fogNear: 30, fogFar: 200 },
@@ -121,6 +214,12 @@ export const COLLECTION_PARTICLES = {
   quote:      { count: 12, color: 0xffeeaa, duration: 0.4, speed: 3, type: 'spiral' },
   abyssOrb:   { count: 22, color: 0x8800cc, duration: 0.6, speed: 6, type: 'implode' },
 };
+
+// Power-up Particles
+export const SHIELD_SHATTER_PARTICLES = { count: 16, color: 0x64c8ff, duration: 0.4, speed: 4, type: 'burst' };
+export const MAGNET_VORTEX_PARTICLES = { count: 8, color: 0x00e5ff, duration: 0.3, speed: 2, type: 'spiral' };
+export const RUSH_ACTIVATE_PARTICLES = { count: 20, color: 0xffd700, duration: 0.5, speed: 5, type: 'burst' };
+export const SLOW_TIME_PARTICLES = { count: 12, color: 0x6a5acd, duration: 0.4, speed: 3, type: 'spiral' };
 
 // Screen effects
 export const SCREEN_SHAKE_DURATION = 0.15;
