@@ -88,3 +88,108 @@ body {
 .hidden {
   display: none !important;
 }
+
+/* Screens */
+#start-screen,
+#gameover-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  z-index: 100;
+  text-align: center;
+  padding: 20px;
+}
+
+.game-title {
+  font-family: 'Bangers', cursive;
+  font-size: clamp(48px, 12vw, 96px);
+  line-height: 1;
+  color: #fff;
+  text-shadow: 4px 4px 0 #1a1a2e, 0 0 20px rgba(100, 180, 255, 0.5);
+  margin-bottom: 10px;
+}
+
+.subtitle {
+  font-size: 18px;
+  color: #aaccee;
+  font-style: italic;
+  margin-bottom: 20px;
+}
+
+#high-score-display {
+  font-family: 'Bangers', cursive;
+  font-size: 24px;
+  color: #ffd700;
+  margin-bottom: 30px;
+}
+
+.start-prompt {
+  font-family: 'Bangers', cursive;
+  font-size: 28px;
+  animation: pulse 0.8s ease-in-out infinite alternate;
+  margin-bottom: 30px;
+}
+
+.gameover-title {
+  font-family: 'Bangers', cursive;
+  font-size: clamp(32px, 8vw, 64px);
+  color: #ff4444;
+  text-shadow: 3px 3px 0 #000;
+  margin-bottom: 10px;
+}
+
+.new-high {
+  font-family: 'Bangers', cursive;
+  font-size: 28px;
+  color: #ffd700;
+  animation: pulse 0.5s ease-in-out infinite alternate;
+  margin-bottom: 10px;
+}
+
+.gameover-stats {
+  font-family: 'Bangers', cursive;
+  font-size: 22px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.gameover-quote {
+  font-size: 16px;
+  font-style: italic;
+  color: #aaa;
+  max-width: 400px;
+  margin-bottom: 20px;
+}
+
+.gameover-achievements {
+  margin-bottom: 20px;
+}
+
+.achievement-item {
+  font-size: 18px;
+  color: #ffd700;
+}
+
+.game-btn,
+#achievements-btn {
+  font-family: 'Bangers', cursive;
+  font-size: 24px;
+  padding: 12px 40px;
+  background: #4488cc;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  letter-spacing: 2px;
+  margin: 8px;
+}
+
+.game-btn:hover,
+#achievements-btn:hover {
+  background: #5599dd;
+}
