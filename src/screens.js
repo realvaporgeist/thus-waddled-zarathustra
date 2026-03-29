@@ -312,7 +312,7 @@ function createPreviewPenguin() {
   mats.beak = new THREE.MeshStandardMaterial({ color: 0xff8c00 });
   const beak = new THREE.Mesh(beakGeo, mats.beak);
   beak.position.set(0, PENGUIN_HEIGHT * 0.82, PENGUIN_RADIUS * 0.65);
-  beak.rotation.x = -Math.PI / 2;
+  beak.rotation.x = Math.PI / 2;
   group.add(beak);
 
   const footGeo = new THREE.BoxGeometry(0.15, 0.05, 0.2);
