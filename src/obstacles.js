@@ -48,9 +48,50 @@ const pool = {
     color: 0xff8800, transparent: true, opacity: 0.15, side: THREE.DoubleSide,
   }),
 
-  beamGeo: new THREE.BoxGeometry(1.6, 0.12, 0.12),
-  beamMat: new THREE.MeshStandardMaterial({
-    color: 0x99bbdd, transparent: true, opacity: 0.5,
+  // Ice spike
+  spikeGeo: new THREE.ConeGeometry(0.5, ICE_SPIKE_HEIGHT, 6),
+  spikeMat: new THREE.MeshStandardMaterial({
+    color: 0x88ccee, transparent: true, opacity: 0.85,
+    emissive: 0x225588, emissiveIntensity: 0.2,
+  }),
+  spikeTrailGeo: new THREE.PlaneGeometry(0.3, 2),
+  spikeTrailMat: new THREE.MeshStandardMaterial({
+    color: 0xaaddff, transparent: true, opacity: 0.3, side: THREE.DoubleSide,
+  }),
+
+  // Ice wall
+  wallGeo: new THREE.BoxGeometry(LANE_WIDTH * 2.2, ICE_WALL_HEIGHT, 0.5),
+  wallMat: new THREE.MeshStandardMaterial({
+    color: 0x99ccdd, transparent: true, opacity: 0.7,
+    emissive: 0x446688, emissiveIntensity: 0.15,
+  }),
+  veinGeo: new THREE.BoxGeometry(LANE_WIDTH * 2, 0.05, 0.52),
+  veinMat: new THREE.MeshStandardMaterial({ color: 0xbbddee, emissive: 0xbbddee, emissiveIntensity: 0.3 }),
+
+  // Crevasse
+  crackGeo: new THREE.PlaneGeometry(LANE_WIDTH * 0.9, 2),
+  crackMat: new THREE.MeshStandardMaterial({
+    color: 0x0a0a2e, emissive: 0x1a1a4e, emissiveIntensity: 0.4,
+    side: THREE.DoubleSide,
+  }),
+  crackGlowGeo: new THREE.PlaneGeometry(LANE_WIDTH * 0.6, 1.5),
+  crackGlowMat: new THREE.MeshStandardMaterial({
+    color: 0x4488ff, emissive: 0x4488ff, emissiveIntensity: 0.6,
+    transparent: true, opacity: 0.4, side: THREE.DoubleSide,
+  }),
+
+  // Wind gust (single shared material — per-instance position randomization)
+  streakGeo: new THREE.PlaneGeometry(3, 0.08),
+  streakMat: new THREE.MeshStandardMaterial({
+    color: 0xddeeff, transparent: true, opacity: 0.55,
+    side: THREE.DoubleSide,
+  }),
+
+  // Philosopher fog (single geo + mat — per-instance scale for size variation)
+  fogBallGeo: new THREE.SphereGeometry(1.5, 8, 6),
+  fogBallMat: new THREE.MeshStandardMaterial({
+    color: 0x8866aa, transparent: true, opacity: 0.18,
+    emissive: 0x443366, emissiveIntensity: 0.1,
   }),
 };
 
@@ -74,9 +115,17 @@ function getTombstoneTexturedMat() {
   return tombstoneTextureMat;
 }
 
-const obstacleTypes = [
-  'iceBlock', 'iceSpike', 'snowball', 'tombstone', 'book', 'eternalRing',
-];
+function applyCastShadow(mesh) {
+  if (mesh.isMesh) {
+    mesh.castShadow = true;
+  } else {
+    mesh.traverse(child => { if (child.isMesh) child.castShadow = true; });
+  }
+}
+
+function getSpawnGap(difficulty) {
+  return Math.max(MIN_OBSTACLE_GAP, 15 - difficulty * 0.5);
+}
 
 function createObstacleMesh(typeName) {
   let mesh, height, type;
@@ -92,19 +141,10 @@ function createObstacleMesh(typeName) {
 
     case 'iceSpike': {
       const group = new THREE.Group();
-      const spikeGeo = new THREE.ConeGeometry(0.5, ICE_SPIKE_HEIGHT, 6);
-      const spikeMat = new THREE.MeshStandardMaterial({
-        color: 0x88ccee, transparent: true, opacity: 0.85,
-        emissive: 0x225588, emissiveIntensity: 0.2,
-      });
-      const spike = new THREE.Mesh(spikeGeo, spikeMat);
+      const spike = new THREE.Mesh(pool.spikeGeo, pool.spikeMat);
       spike.position.y = ICE_SPIKE_HEIGHT / 2;
       group.add(spike);
-      const trailGeo = new THREE.PlaneGeometry(0.3, 2);
-      const trailMat = new THREE.MeshStandardMaterial({
-        color: 0xaaddff, transparent: true, opacity: 0.3, side: THREE.DoubleSide,
-      });
-      const trail = new THREE.Mesh(trailGeo, trailMat);
+      const trail = new THREE.Mesh(pool.spikeTrailGeo, pool.spikeTrailMat);
       trail.rotation.x = -Math.PI / 2;
       trail.position.y = 0.05;
       trail.position.z = 1.5;
@@ -163,18 +203,11 @@ function createObstacleMesh(typeName) {
 
     case 'iceWall': {
       const group = new THREE.Group();
-      const wallGeo = new THREE.BoxGeometry(LANE_WIDTH * 2.2, ICE_WALL_HEIGHT, 0.5);
-      const wallMat = new THREE.MeshStandardMaterial({
-        color: 0x99ccdd, transparent: true, opacity: 0.7,
-        emissive: 0x446688, emissiveIntensity: 0.15,
-      });
-      const wall = new THREE.Mesh(wallGeo, wallMat);
+      const wall = new THREE.Mesh(pool.wallGeo, pool.wallMat);
       wall.position.y = ICE_WALL_HEIGHT / 2;
       group.add(wall);
-      const veinGeo = new THREE.BoxGeometry(LANE_WIDTH * 2, 0.05, 0.52);
-      const veinMat = new THREE.MeshStandardMaterial({ color: 0xbbddee, emissive: 0xbbddee, emissiveIntensity: 0.3 });
       for (let i = 0; i < 3; i++) {
-        const vein = new THREE.Mesh(veinGeo, veinMat);
+        const vein = new THREE.Mesh(pool.veinGeo, pool.veinMat);
         vein.position.y = 0.5 + i * 0.8;
         vein.rotation.z = (Math.random() - 0.5) * 0.1;
         group.add(vein);
@@ -187,21 +220,11 @@ function createObstacleMesh(typeName) {
 
     case 'crevasse': {
       const group = new THREE.Group();
-      const crackGeo = new THREE.PlaneGeometry(LANE_WIDTH * 0.9, 2);
-      const crackMat = new THREE.MeshStandardMaterial({
-        color: 0x0a0a2e, emissive: 0x1a1a4e, emissiveIntensity: 0.4,
-        side: THREE.DoubleSide,
-      });
-      const crack = new THREE.Mesh(crackGeo, crackMat);
+      const crack = new THREE.Mesh(pool.crackGeo, pool.crackMat);
       crack.rotation.x = -Math.PI / 2;
       crack.position.y = 0.02;
       group.add(crack);
-      const glowGeo = new THREE.PlaneGeometry(LANE_WIDTH * 0.6, 1.5);
-      const glowMat = new THREE.MeshStandardMaterial({
-        color: 0x4488ff, emissive: 0x4488ff, emissiveIntensity: 0.6,
-        transparent: true, opacity: 0.4, side: THREE.DoubleSide,
-      });
-      const glow = new THREE.Mesh(glowGeo, glowMat);
+      const glow = new THREE.Mesh(pool.crackGlowGeo, pool.crackGlowMat);
       glow.rotation.x = -Math.PI / 2;
       glow.position.y = -0.1;
       group.add(glow);
@@ -214,12 +237,7 @@ function createObstacleMesh(typeName) {
     case 'windGust': {
       const group = new THREE.Group();
       for (let i = 0; i < 5; i++) {
-        const streakGeo = new THREE.PlaneGeometry(3, 0.08);
-        const streakMat = new THREE.MeshStandardMaterial({
-          color: 0xddeeff, transparent: true, opacity: 0.4 + Math.random() * 0.3,
-          side: THREE.DoubleSide,
-        });
-        const streak = new THREE.Mesh(streakGeo, streakMat);
+        const streak = new THREE.Mesh(pool.streakGeo, pool.streakMat);
         streak.position.set(
           (Math.random() - 0.5) * 2,
           0.5 + Math.random() * 1.5,
@@ -236,12 +254,9 @@ function createObstacleMesh(typeName) {
     case 'philosopherFog': {
       const group = new THREE.Group();
       for (let i = 0; i < 6; i++) {
-        const fogGeo = new THREE.SphereGeometry(1.2 + Math.random() * 0.5, 8, 6);
-        const fogMat = new THREE.MeshStandardMaterial({
-          color: 0x8866aa, transparent: true, opacity: 0.15 + Math.random() * 0.1,
-          emissive: 0x443366, emissiveIntensity: 0.1,
-        });
-        const fogBall = new THREE.Mesh(fogGeo, fogMat);
+        const fogBall = new THREE.Mesh(pool.fogBallGeo, pool.fogBallMat);
+        const s = 0.8 + Math.random() * 0.35;
+        fogBall.scale.set(s, s, s);
         fogBall.position.set(
           (Math.random() - 0.5) * 1.5,
           0.8 + Math.random() * 1.0,
@@ -263,7 +278,7 @@ function createObstacleMesh(typeName) {
     }
   }
 
-  mesh.castShadow = true;
+  applyCastShadow(mesh);
   return { mesh, height, type };
 }
 
@@ -357,21 +372,18 @@ export function spawnObstacle(scene, worldZ, difficulty, distance, weather) {
   // Special spawn for multi-lane obstacles
   if (typeName === 'iceWall') {
     spawnIceWall(scene, -OBSTACLE_SPAWN_DISTANCE);
-    const gap = Math.max(MIN_OBSTACLE_GAP, 15 - difficulty * 0.5);
-    nextSpawnZ = worldZ - gap;
+    nextSpawnZ = worldZ - getSpawnGap(difficulty);
     return;
   }
   if (typeName === 'windGust') {
     spawnWindGust(scene, -OBSTACLE_SPAWN_DISTANCE);
-    const gap = Math.max(MIN_OBSTACLE_GAP, 15 - difficulty * 0.5);
-    nextSpawnZ = worldZ - gap;
+    nextSpawnZ = worldZ - getSpawnGap(difficulty);
     return;
   }
   if (typeName === 'philosopherFog') {
     const lane = Math.floor(Math.random() * LANE_POSITIONS.length);
     spawnPhilosopherFog(scene, -OBSTACLE_SPAWN_DISTANCE, lane);
-    const gap = Math.max(MIN_OBSTACLE_GAP, 15 - difficulty * 0.5);
-    nextSpawnZ = worldZ - gap;
+    nextSpawnZ = worldZ - getSpawnGap(difficulty);
     return;
   }
 
@@ -382,8 +394,7 @@ export function spawnObstacle(scene, worldZ, difficulty, distance, weather) {
   scene.add(mesh);
   activeObstacles.push({ mesh, height, type, typeName, lane });
 
-  const gap = Math.max(MIN_OBSTACLE_GAP, 15 - difficulty * 0.5);
-  nextSpawnZ = worldZ - gap;
+  nextSpawnZ = worldZ - getSpawnGap(difficulty);
 }
 
 export function updateObstacles(delta, worldZ, speed) {
