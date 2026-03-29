@@ -700,3 +700,65 @@ body {
 .ability-slow { background: radial-gradient(circle, #6a5acd, #483d8b) !important; }
 .ability-rush { background: radial-gradient(circle, #ffd700, #ff8c00) !important; box-shadow: 0 0 12px rgba(255,215,0,0.6); }
 .ability-dual { background: radial-gradient(circle, #ffd700, #ff8c00) !important; box-shadow: 0 0 16px rgba(255,215,0,0.8); }
+
+/* Boss encounter */
+#boss-warning {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  background: rgba(0,0,0,0.6);
+  pointer-events: none;
+  animation: boss-fade-in 0.5s ease-out;
+}
+.boss-quote {
+  color: #c0c0c0;
+  font-size: 14px;
+  font-style: italic;
+  margin-bottom: 12px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+}
+.boss-name {
+  color: #ff4444;
+  font-size: 28px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  text-shadow: 0 0 20px rgba(255,68,68,0.6);
+}
+@keyframes boss-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+#boss-bar {
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  text-align: center;
+  z-index: 150;
+}
+#boss-bar-name {
+  color: #ff6666;
+  font-size: 11px;
+  font-weight: bold;
+  margin-bottom: 4px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+#boss-bar-track {
+  height: 4px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+#boss-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #ff4444, #ff8844);
+  border-radius: 2px;
+  transition: width 0.3s linear;
+}

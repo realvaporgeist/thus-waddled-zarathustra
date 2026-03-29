@@ -55,7 +55,14 @@ import { setAuroraDiscoMode } from './aurora.js';
 import {
   bounceScore, shakeHeart, pulseLastHeart, updateDreadTimerBar,
   updateComboBar, flashComboTierUp, updatePowerupIcons, updateAbilityButton,
+  showBossWarning, hideBossWarning, showBossHealthBar,
+  updateBossBar, hideBossBar,
 } from './hud.js';
+import {
+  initBosses, updateBosses, isBossActive, isBossEncounter,
+  getBossState, getCurrentBoss, getBossTimer, notifyBossHit,
+  cleanupBosses,
+} from './bosses.js';
 import {
   CAMERA_OFFSET, CAMERA_LOOK_AHEAD, BASE_SPEED, SPEED_INCREMENT,
   MAX_SPEED, INVINCIBILITY_DURATION, POINTS_PER_METER, FISH_POINTS,
@@ -68,6 +75,7 @@ import {
   CAMERA_GAMEPLAY_TRANSITION, CAMERA_IDLE_SWAY_SPEED, CAMERA_IDLE_SWAY_AMOUNT,
   NEAR_MISS_THRESHOLD, LANE_WIDTH,
   COMBO_FILL_NEAR_MISS, COMBO_FILL_FISH, COMBO_FILL_GOLDEN_FISH, COMBO_FILL_NO_DAMAGE_100M,
+  COMBO_FILL_BOSS_SURVIVE,
   SHIELD_SHATTER_PARTICLES, MAGNET_VORTEX_PARTICLES, RUSH_ACTIVATE_PARTICLES, SLOW_TIME_PARTICLES,
   DISCO_SCORE_MULTIPLIER,
 } from './constants.js';
@@ -272,6 +280,22 @@ function startGame() {
   const gameWeathers = ['lightSnow', 'blizzard', 'clearAurora', 'fog'];
   setWeather(gameWeathers[Math.floor(Math.random() * gameWeathers.length)]);
 
+  initBosses(scene, {
+    onBossWarning: (boss) => {
+      showBossWarning(boss);
+    },
+    onBossActive: (boss) => {
+      hideBossWarning();
+      showBossHealthBar(boss);
+    },
+    onBossDefeat: (boss, wasHit) => {
+      hideBossBar();
+      showToast(`${boss.name} — SURVIVED!`, 2500);
+      if (wasHit) resetCombo();
+      fillCombo(COMBO_FILL_BOSS_SURVIVE);
+    },
+  });
+
   startMusic();
   gameState = 'playing';
 }
@@ -285,6 +309,9 @@ function gameOver() {
   cleanupDread();
   cleanupCombo();
   cleanupPowerups();
+  cleanupBosses();
+  hideBossWarning();
+  hideBossBar();
   showHUD(false);
 
   const quickDeath = elapsed < 5;
@@ -392,6 +419,14 @@ function gameLoop(now) {
       updateDreadTimerBar(0, false);
     }
 
+    // Boss encounter updates
+    updateBosses(delta, distance, playerZ);
+    if (isBossActive()) {
+      const boss = getCurrentBoss();
+      const progress = getBossTimer() / boss.duration;
+      updateBossBar(progress);
+    }
+
     // No-damage combo bonus every 100m
     if (distance - lastDamageDistanceForCombo >= 100) {
       fillCombo(COMBO_FILL_NO_DAMAGE_100M);
@@ -400,7 +435,9 @@ function gameLoop(now) {
 
     // Obstacle spawning & movement
     const difficulty = Math.floor(elapsed / 10);
-    spawnObstacle(scene, playerZ, difficulty, distance, getCurrentWeather());
+    if (!isBossEncounter()) {
+      spawnObstacle(scene, playerZ, difficulty, distance, getCurrentWeather());
+    }
     updateObstacles(delta, playerZ, currentSpeed);
 
     // Collision detection
@@ -432,6 +469,9 @@ function gameLoop(now) {
           // Reset combo on damage
           resetCombo();
           lastDamageDistanceForCombo = distance;
+
+          // Notify boss system of hit
+          if (isBossActive()) notifyBossHit();
 
           if (hearts <= 0) {
             gameOver();
@@ -574,8 +614,8 @@ function gameLoop(now) {
   if (gameState === 'playing') {
     updateWeather(delta);
 
-    // Weather gameplay effects (disabled during dread mode)
-    if (!isDreadActive()) {
+    // Weather gameplay effects (disabled during dread mode and boss encounters)
+    if (!isDreadActive() && !isBossEncounter()) {
       updateWeatherGameplay(delta);
       const weatherMods = getWeatherModifiers();
       if (weatherMods.drift > 0 && weatherMods.driftDirection !== 0) {
@@ -584,7 +624,12 @@ function gameLoop(now) {
       setObstacleDrawDistance(weatherMods.drawDistanceMult);
       setWeatherCollectibleModifiers(weatherMods.fishSpawnBonus, weatherMods.goldenFishMult);
       weatherScoreBonus = 1 + weatherMods.scoreBonus;
+    } else if (isDreadActive()) {
+      setObstacleDrawDistance(1);
+      setWeatherCollectibleModifiers(0, 1);
+      weatherScoreBonus = 1;
     } else {
+      // Boss encounter — neutral values
       setObstacleDrawDistance(1);
       setWeatherCollectibleModifiers(0, 1);
       weatherScoreBonus = 1;

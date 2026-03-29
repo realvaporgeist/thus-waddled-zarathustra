@@ -227,3 +227,41 @@ export function updateAbilityButton(slowTimeCharged, rushCharged, selected) {
     btn.className = 'ability-slow';
   }
 }
+
+// ---------------------------------------------------------------------------
+// Boss HUD
+// ---------------------------------------------------------------------------
+export function showBossWarning(boss) {
+  const warning = document.createElement('div');
+  warning.id = 'boss-warning';
+  warning.innerHTML = `
+    <div class="boss-quote">${boss.quote}</div>
+    <div class="boss-name">${boss.name}</div>
+  `;
+  document.body.appendChild(warning);
+}
+
+export function hideBossWarning() {
+  const w = document.getElementById('boss-warning');
+  if (w) w.remove();
+}
+
+export function showBossHealthBar(boss) {
+  const bar = document.createElement('div');
+  bar.id = 'boss-bar';
+  bar.innerHTML = `
+    <div id="boss-bar-name">${boss.name}</div>
+    <div id="boss-bar-track"><div id="boss-bar-fill"></div></div>
+  `;
+  document.body.appendChild(bar);
+}
+
+export function updateBossBar(progress) {
+  const fill = document.getElementById('boss-bar-fill');
+  if (fill) fill.style.width = `${progress * 100}%`;
+}
+
+export function hideBossBar() {
+  const b = document.getElementById('boss-bar');
+  if (b) b.remove();
+}
