@@ -26,7 +26,7 @@ export function createStartScreen(onStart) {
   startScreen = document.createElement('div');
   startScreen.id = 'start-screen';
   startScreen.innerHTML = `
-    <h1 class="game-title">NIETZSCHE<br>PENGUIN</h1>
+    <h1 class="game-title">THUS WADDLES<br>ZARATHUSTRA</h1>
     <p class="subtitle">An Endless Run Toward Meaning</p>
     <p id="high-score-display"></p>
     <p class="controls-hint">
