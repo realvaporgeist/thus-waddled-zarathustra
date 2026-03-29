@@ -1,5 +1,6 @@
 // src/main.js
 import * as THREE from 'three';
+import { initSplash, destroySplash } from './splash.js';
 import { initScene, render, getCamera } from './scene.js';
 import { createTerrain, updateTerrain, resetTerrain } from './terrain.js';
 import {
@@ -129,13 +130,19 @@ initWeather(scene);
 setWeather('clearAurora');
 setIdleMode(true);
 
-// Splash screen — dismiss on click/key/tap, then start audio (user gesture unlocks AudioContext)
+// Cinematic splash screen — 3D penguin staring into the abyss
 const splash = document.getElementById('splash-screen');
+const splashCanvas = document.getElementById('splash-canvas');
+initSplash(splashCanvas);
+
 const dismissSplash = (e) => {
   // Prevent this same event from reaching handleIntroSkip and skipping the intro
   e.stopImmediatePropagation();
   splash.classList.add('fade-out');
-  splash.addEventListener('animationend', () => splash.remove());
+  splash.addEventListener('animationend', () => {
+    destroySplash();
+    splash.remove();
+  });
   // Restart the intro camera so the pan plays after the splash fades
   cameraState = 'intro';
   cameraTimer = 0;
