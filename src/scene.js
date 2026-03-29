@@ -212,12 +212,16 @@ export function hideSlowTimeFilter() {
 // Disco mode visuals
 // ---------------------------------------------------------------------------
 let discoStrobeTimer = 0;
-let discoStrobeColors = [0xff0040, 0x00ff80, 0x4080ff, 0xffff00, 0xff00ff, 0x00ffff];
+const discoStrobeColors = [0xff0040, 0x00ff80, 0x4080ff, 0xffff00, 0xff00ff, 0x00ffff];
 let discoColorIndex = 0;
 
 export function startDiscoVisuals() {
   discoStrobeTimer = 0;
   discoColorIndex = 0;
+
+  // Remove stale overlay if present
+  const existing = document.getElementById('disco-overlay');
+  if (existing) existing.remove();
 
   const overlay = document.createElement('div');
   overlay.id = 'disco-overlay';
