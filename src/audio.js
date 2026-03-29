@@ -126,35 +126,47 @@ const TRACK_URLS = {
 const CROSSFADE_DURATION = 1.0; // seconds
 const MUSIC_VOLUME = 0.35;
 
-let trackBuffers = {};
+let rawTrackData = {};    // name → ArrayBuffer (raw fetch, no AudioContext needed)
+let trackBuffers = {};    // name → AudioBuffer (decoded, needs AudioContext)
 let currentSource = null;
 let currentGainNode = null;
 let currentTrackName = null;
 let musicPaused = false;
-let preloadPromise = null;
+let prefetchPromise = null;
 
-function preloadMusic() {
-  if (preloadPromise) return preloadPromise;
-  preloadPromise = (async () => {
-    const c = ensureCtx();
-    await Promise.all(
-      Object.entries(TRACK_URLS).map(async ([name, url]) => {
-        try {
-          const resp = await fetch(url);
-          const buf = await resp.arrayBuffer();
-          trackBuffers[name] = await c.decodeAudioData(buf);
-        } catch (e) {
-          console.warn(`Failed to load music track "${name}":`, e);
-        }
-      }),
-    );
-  })();
-  return preloadPromise;
+// Fetch raw MP3 bytes — safe to call before any user gesture
+function prefetchMusic() {
+  if (prefetchPromise) return prefetchPromise;
+  prefetchPromise = Promise.all(
+    Object.entries(TRACK_URLS).map(async ([name, url]) => {
+      try {
+        const resp = await fetch(url);
+        rawTrackData[name] = await resp.arrayBuffer();
+      } catch (e) {
+        console.warn(`Failed to fetch music track "${name}":`, e);
+      }
+    }),
+  );
+  return prefetchPromise;
+}
+
+// Decode a single track on demand — requires AudioContext
+async function ensureDecoded(name) {
+  if (trackBuffers[name]) return trackBuffers[name];
+  const raw = rawTrackData[name];
+  if (!raw) return null;
+  const c = ensureCtx();
+  try {
+    trackBuffers[name] = await c.decodeAudioData(raw.slice(0));
+  } catch (e) {
+    console.warn(`Failed to decode music track "${name}":`, e);
+  }
+  return trackBuffers[name] || null;
 }
 
 export async function playTrack(name) {
   const c = ensureCtx();
-  await preloadMusic();
+  await prefetchPromise;
 
   // Resume the same paused track instead of restarting
   if (name === currentTrackName && musicPaused) {
@@ -164,7 +176,7 @@ export async function playTrack(name) {
 
   if (name === currentTrackName && !musicPaused) return;
 
-  const buffer = trackBuffers[name];
+  const buffer = await ensureDecoded(name);
   if (!buffer) return;
 
   musicPaused = false;
@@ -222,22 +234,19 @@ export function resumeMusic() {
 }
 
 export function initAudio() {
-  // Create context immediately (suspended until user gesture — browser policy)
-  ensureCtx();
+  // Prefetch raw MP3 bytes immediately — no AudioContext, no browser warnings
+  prefetchMusic();
 
-  // Preload tracks and queue menu music right away.
-  // The AudioContext is suspended, so no audio plays yet. The fade-in ramp is
-  // scheduled at the context's currentTime (frozen while suspended). When the
-  // browser resumes the context on the first user gesture, the ramp executes
-  // and the music fades in naturally.
-  preloadMusic().then(() => playTrack('menu'));
-
-  // Ensure the context resumes on the very first user gesture
+  // On first user gesture: create AudioContext, decode menu track, play it.
+  // MP3 bytes are already fetched so decode + play is near-instant.
   const handleGesture = () => {
-    if (ctx && ctx.state === 'suspended') ctx.resume();
     window.removeEventListener('click', handleGesture);
     window.removeEventListener('keydown', handleGesture);
     window.removeEventListener('touchstart', handleGesture);
+    playTrack('menu').then(() => {
+      // Decode remaining tracks in background so they're ready for gameplay
+      Object.keys(TRACK_URLS).forEach((name) => ensureDecoded(name));
+    });
   };
   window.addEventListener('click', handleGesture);
   window.addEventListener('keydown', handleGesture);
