@@ -157,8 +157,42 @@ body {
 }
 
 /* Screens */
-#start-screen,
-#gameover-screen,
+#start-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 10vh;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 30%,
+    rgba(0, 0, 0, 0.3) 60%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+  color: #fff;
+  z-index: 100;
+  text-align: center;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+#gameover-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  z-index: 100;
+  text-align: center;
+  padding: 20px;
+}
+
 #pause-screen {
   position: absolute;
   inset: 0;
@@ -166,7 +200,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.7);
   color: #fff;
   z-index: 100;
   text-align: center;
@@ -182,6 +216,12 @@ body {
   letter-spacing: 4px;
   text-shadow: 4px 4px 0 #1a1a2e, 0 0 20px rgba(100, 180, 255, 0.5);
   margin-bottom: 10px;
+  animation: title-fade-in 1s ease-out 3s both;
+}
+
+@keyframes title-fade-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .subtitle {
@@ -192,6 +232,7 @@ body {
   font-style: italic;
   margin-bottom: 20px;
   letter-spacing: 1px;
+  animation: title-fade-in 1s ease-out 3.5s both;
 }
 
 #high-score-display {
@@ -199,13 +240,14 @@ body {
   font-weight: 600;
   color: #ffd700;
   margin-bottom: 30px;
+  animation: title-fade-in 0.5s ease-out 3.5s both;
 }
 
 .start-prompt {
   font-size: 28px;
   font-weight: 600;
   letter-spacing: 3px;
-  animation: pulse-text 0.8s ease-in-out infinite alternate;
+  animation: pulse-text 0.8s ease-in-out infinite alternate, title-fade-in 0.5s ease-out 3.5s both;
   margin-bottom: 30px;
 }
 
@@ -220,6 +262,7 @@ body {
   color: #7799bb;
   margin-bottom: 24px;
   line-height: 1.6;
+  animation: title-fade-in 0.5s ease-out 3.5s both;
 }
 
 .controls-hint span {
@@ -232,6 +275,7 @@ body {
   gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
+  animation: title-fade-in 0.5s ease-out 4s both;
 }
 
 .gameover-title {
@@ -299,10 +343,6 @@ body {
 }
 
 /* Pause Screen */
-#pause-screen {
-  background: rgba(0, 0, 0, 0.7);
-}
-
 .pause-title {
   font-size: 56px;
   font-weight: 700;
