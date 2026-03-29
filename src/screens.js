@@ -1,4 +1,6 @@
 // src/screens.js
+import { getAllAchievements, getUnlockedAchievements, getCollectedQuotes } from './achievements.js';
+import { getNietzscheQuotes } from './collectibles.js';
 
 const GAME_OVER_QUIPS = [
   'THE ABYSS CLAIMED YOU',
@@ -32,6 +34,7 @@ export function createStartScreen(onStart) {
   `;
 
   document.getElementById('ui-overlay').appendChild(startScreen);
+  document.getElementById('achievements-btn').addEventListener('click', showAchievementsGallery);
 
   const highScore = localStorage.getItem('np_highscore') || 0;
   document.getElementById('high-score-display').textContent =
@@ -111,4 +114,41 @@ export function hideGameOverScreen() {
     gameOverScreen.remove();
     gameOverScreen = null;
   }
+}
+
+export function showAchievementsGallery() {
+  const overlay = document.createElement('div');
+  overlay.id = 'achievements-gallery';
+
+  const unlocked = getUnlockedAchievements();
+  const allAchievements = getAllAchievements();
+  const collectedQuotes = getCollectedQuotes();
+  const allQuotes = getNietzscheQuotes();
+
+  overlay.innerHTML = `
+    <h2 class="gallery-title">ACHIEVEMENTS</h2>
+    <div class="gallery-section">
+      <h3>MILESTONES</h3>
+      ${allAchievements.map(a => `
+        <div class="gallery-item ${unlocked.includes(a.id) ? 'unlocked' : 'locked'}">
+          <span class="gallery-icon">${unlocked.includes(a.id) ? '🏆' : '🔒'}</span>
+          <span class="gallery-name">${unlocked.includes(a.id) ? a.name : '???'}</span>
+          <span class="gallery-desc">${a.description}</span>
+        </div>
+      `).join('')}
+    </div>
+    <div class="gallery-section">
+      <h3>NIETZSCHE QUOTES (${collectedQuotes.length}/${allQuotes.length})</h3>
+      ${allQuotes.map(q => `
+        <div class="gallery-item ${collectedQuotes.includes(q) ? 'unlocked' : 'locked'}">
+          <span class="gallery-icon">${collectedQuotes.includes(q) ? '📜' : '❓'}</span>
+          <span class="gallery-text">${collectedQuotes.includes(q) ? '"' + q + '"' : '???'}</span>
+        </div>
+      `).join('')}
+    </div>
+    <button id="gallery-close" class="game-btn">BACK</button>
+  `;
+
+  document.getElementById('ui-overlay').appendChild(overlay);
+  document.getElementById('gallery-close').addEventListener('click', () => overlay.remove());
 }

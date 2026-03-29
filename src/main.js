@@ -15,6 +15,7 @@ import {
   createStartScreen, hideStartScreen, showStartScreen,
   showGameOverScreen, hideGameOverScreen,
 } from './screens.js';
+import { checkAchievements, incrementPersistentStats, collectQuote } from './achievements.js';
 import { startDread, updateDread, isDreadActive, getDreadSpeedMultiplier, cleanupDread } from './dread.js';
 import {
   CAMERA_OFFSET, CAMERA_LOOK_AHEAD, BASE_SPEED, SPEED_INCREMENT,
@@ -105,6 +106,18 @@ function gameOver() {
   gameState = 'gameover';
   showHUD(false);
 
+  // Achievement checking
+  const persistentStats = incrementPersistentStats({ dreadsSurvived: dreadsSurvivedThisRun });
+  const runStats = {
+    distance,
+    score,
+    fishThisRun: fishCount,
+    dreadsSurvived: dreadsSurvivedThisRun,
+    totalDreadsSurvived: persistentStats.totalDreadsSurvived,
+    totalGames: persistentStats.totalGames,
+  };
+  newAchievements = checkAchievements(runStats);
+
   showGameOverScreen(score, distance, fishCount, newAchievements, () => {
     startGame();
   });
@@ -190,6 +203,9 @@ function gameLoop(now) {
           score += GOLDEN_FISH_POINTS * scoreMultiplier;
           fishCount++;
           updateFishCount(fishCount);
+        } else if (pickup.type === 'quote') {
+          const isNew = collectQuote(pickup.quoteText);
+          if (isNew) newAchievements.push('Quote: "' + pickup.quoteText + '"');
         } else if (pickup.type === 'abyssOrb' && !isDreadActive()) {
           startDread(scene, () => {
             showMultiplier(false);

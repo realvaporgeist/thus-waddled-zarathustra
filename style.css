@@ -193,3 +193,59 @@ body {
 #achievements-btn:hover {
   background: #5599dd;
 }
+
+/* Achievements Gallery */
+#achievements-gallery {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  z-index: 200;
+  overflow-y: auto;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gallery-title {
+  font-family: 'Bangers', cursive;
+  font-size: 42px;
+  margin-bottom: 20px;
+}
+
+.gallery-section {
+  width: 100%;
+  max-width: 500px;
+  margin-bottom: 30px;
+}
+
+.gallery-section h3 {
+  font-family: 'Bangers', cursive;
+  font-size: 22px;
+  color: #aaccee;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 5px;
+}
+
+.gallery-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #222;
+  font-size: 16px;
+}
+
+.gallery-item.locked { opacity: 0.4; }
+
+.gallery-icon {
+  font-size: 22px;
+  min-width: 30px;
+  text-align: center;
+}
+
+.gallery-name { font-weight: bold; }
+.gallery-desc { color: #888; font-size: 14px; }
+.gallery-text { font-style: italic; font-size: 14px; }
