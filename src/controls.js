@@ -1,5 +1,5 @@
 // src/controls.js
-import { SWIPE_THRESHOLD, SWIPE_MAX_TIME } from './constants.js';
+import { SWIPE_THRESHOLD, SWIPE_MAX_TIME, ABILITY_HOLD_THRESHOLD } from './constants.js';
 
 let onLeft = null;
 let onRight = null;
@@ -13,6 +13,11 @@ let onAbilityHold = null;
 let touchStartX = 0;
 let touchStartY = 0;
 let touchStartTime = 0;
+
+let abilityBtnRef = null;
+let abilityPointerDown = null;
+let abilityPointerUp = null;
+let abilityPointerLeave = null;
 
 export function initControls(callbacks) {
   onLeft = callbacks.onLeft;
@@ -29,19 +34,22 @@ export function initControls(callbacks) {
   window.addEventListener('touchend', handleTouchEnd, { passive: false });
 
   // Earned ability button
-  const abilityBtn = document.getElementById('ability-btn');
-  if (abilityBtn) {
+  abilityBtnRef = document.getElementById('ability-btn');
+  if (abilityBtnRef) {
     let holdTimer = null;
     let held = false;
-    abilityBtn.addEventListener('pointerdown', () => {
+    abilityPointerDown = () => {
       held = false;
-      holdTimer = setTimeout(() => { held = true; callbacks.onAbilityHold?.(); }, 500);
-    });
-    abilityBtn.addEventListener('pointerup', () => {
+      holdTimer = setTimeout(() => { held = true; callbacks.onAbilityHold?.(); }, ABILITY_HOLD_THRESHOLD * 1000);
+    };
+    abilityPointerUp = () => {
       clearTimeout(holdTimer);
       if (!held) callbacks.onAbility?.();
-    });
-    abilityBtn.addEventListener('pointerleave', () => clearTimeout(holdTimer));
+    };
+    abilityPointerLeave = () => clearTimeout(holdTimer);
+    abilityBtnRef.addEventListener('pointerdown', abilityPointerDown);
+    abilityBtnRef.addEventListener('pointerup', abilityPointerUp);
+    abilityBtnRef.addEventListener('pointerleave', abilityPointerLeave);
   }
 }
 
@@ -119,4 +127,14 @@ export function destroyControls() {
   window.removeEventListener('keydown', handleKeyDown);
   window.removeEventListener('touchstart', handleTouchStart);
   window.removeEventListener('touchend', handleTouchEnd);
+
+  if (abilityBtnRef) {
+    if (abilityPointerDown) abilityBtnRef.removeEventListener('pointerdown', abilityPointerDown);
+    if (abilityPointerUp) abilityBtnRef.removeEventListener('pointerup', abilityPointerUp);
+    if (abilityPointerLeave) abilityBtnRef.removeEventListener('pointerleave', abilityPointerLeave);
+    abilityBtnRef = null;
+    abilityPointerDown = null;
+    abilityPointerUp = null;
+    abilityPointerLeave = null;
+  }
 }

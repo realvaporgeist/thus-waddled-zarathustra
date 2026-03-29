@@ -1,5 +1,5 @@
 // src/hud.js
-import { MAX_HEARTS } from './constants.js';
+import { MAX_HEARTS, SHIELD_MAX_DURATION, MAGNET_DURATION } from './constants.js';
 
 let hudContainer = null;
 let heartsEl = null;
@@ -197,14 +197,14 @@ export function updatePowerupIcons(effects) {
     shield.style.display = effects.shield ? 'flex' : 'none';
     if (effects.shield) {
       const ring = shield.querySelector('.pu-ring circle');
-      if (ring) ring.style.strokeDashoffset = (1 - effects.shieldTimer / 20) * 100;
+      if (ring) ring.style.strokeDashoffset = (1 - effects.shieldTimer / SHIELD_MAX_DURATION) * 100;
     }
   }
   if (magnet) {
     magnet.style.display = effects.magnet ? 'flex' : 'none';
     if (effects.magnet) {
       const ring = magnet.querySelector('.pu-ring circle');
-      if (ring) ring.style.strokeDashoffset = (1 - effects.magnetTimer / 8) * 100;
+      if (ring) ring.style.strokeDashoffset = (1 - effects.magnetTimer / MAGNET_DURATION) * 100;
     }
   }
 }
