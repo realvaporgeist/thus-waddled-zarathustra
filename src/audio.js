@@ -1,8 +1,10 @@
-// src/audio.js — Procedural audio via Web Audio API
+// src/audio.js — Procedural SFX + MP3 music with crossfading
+import menuTrackUrl from '../assets/sounds/music/Main Menu.mp3';
+import gameplayTrackUrl from '../assets/sounds/music/Main Loop.mp3';
+import dreadTrackUrl from '../assets/sounds/music/Dread Mode.mp3';
+import creditsTrackUrl from '../assets/sounds/music/Credits.mp3';
+
 let ctx = null;
-let musicGain = null;
-let musicNodes = [];
-let musicPlaying = false;
 let masterGain = null;
 
 function ensureCtx() {
@@ -16,6 +18,9 @@ function ensureCtx() {
   return ctx;
 }
 
+// ---------------------------------------------------------------------------
+// Procedural SFX (unchanged)
+// ---------------------------------------------------------------------------
 function osc(type, freq, startTime, duration, volume, rampTo) {
   const c = ensureCtx();
   const o = c.createOscillator();
@@ -29,10 +34,6 @@ function osc(type, freq, startTime, duration, volume, rampTo) {
   g.connect(masterGain);
   o.start(startTime);
   o.stop(startTime + duration);
-}
-
-export function initAudio() {
-  // Context is created lazily on first user interaction
 }
 
 export function playJump() {
@@ -68,7 +69,6 @@ export function playGoldenCollect() {
 export function playDreadEnter() {
   const c = ensureCtx();
   const t = c.currentTime;
-  // Ominous ascending rumble
   const o = c.createOscillator();
   const g = c.createGain();
   const filt = c.createBiquadFilter();
@@ -108,91 +108,138 @@ export function playGameOver() {
 export function playQuoteCollect() {
   const c = ensureCtx();
   const t = c.currentTime;
-  // Mysterious harp-like arpeggio
   [330, 440, 554, 660, 880].forEach((f, i) => {
     osc('sine', f, t + i * 0.08, 0.5 - i * 0.05, 0.06);
   });
 }
 
 // ---------------------------------------------------------------------------
-// Background music — atmospheric drone
+// MP3 music system — crossfading between tracks
 // ---------------------------------------------------------------------------
-export function startMusic() {
+const TRACK_URLS = {
+  menu: menuTrackUrl,
+  gameplay: gameplayTrackUrl,
+  dread: dreadTrackUrl,
+  credits: creditsTrackUrl,
+};
+
+const CROSSFADE_DURATION = 1.0; // seconds
+const MUSIC_VOLUME = 0.35;
+
+let trackBuffers = {};
+let currentSource = null;
+let currentGainNode = null;
+let currentTrackName = null;
+let musicPaused = false;
+let preloadPromise = null;
+
+function preloadMusic() {
+  if (preloadPromise) return preloadPromise;
+  preloadPromise = (async () => {
+    const c = ensureCtx();
+    await Promise.all(
+      Object.entries(TRACK_URLS).map(async ([name, url]) => {
+        try {
+          const resp = await fetch(url);
+          const buf = await resp.arrayBuffer();
+          trackBuffers[name] = await c.decodeAudioData(buf);
+        } catch (e) {
+          console.warn(`Failed to load music track "${name}":`, e);
+        }
+      }),
+    );
+  })();
+  return preloadPromise;
+}
+
+export async function playTrack(name) {
   const c = ensureCtx();
-  if (musicPlaying) return;
-  musicPlaying = true;
+  await preloadMusic();
 
-  musicGain = c.createGain();
-  musicGain.gain.value = 0.05;
-  musicGain.connect(masterGain);
+  // Resume the same paused track instead of restarting
+  if (name === currentTrackName && musicPaused) {
+    resumeMusic();
+    return;
+  }
 
-  // Base drone A1
-  const o1 = c.createOscillator();
-  o1.type = 'sine';
-  o1.frequency.value = 55;
-  o1.connect(musicGain);
-  o1.start();
+  if (name === currentTrackName && !musicPaused) return;
 
-  // Fifth E2
-  const o2 = c.createOscillator();
-  o2.type = 'sine';
-  o2.frequency.value = 82.5;
-  const g2 = c.createGain();
-  g2.gain.value = 0.4;
-  o2.connect(g2);
-  g2.connect(musicGain);
-  o2.start();
+  const buffer = trackBuffers[name];
+  if (!buffer) return;
 
-  // Octave A2 (subtle)
-  const o3 = c.createOscillator();
-  o3.type = 'triangle';
-  o3.frequency.value = 110;
-  const g3 = c.createGain();
-  g3.gain.value = 0.15;
-  o3.connect(g3);
-  g3.connect(musicGain);
-  o3.start();
+  musicPaused = false;
+  const t = c.currentTime;
 
-  // LFO for slow drift
-  const lfo = c.createOscillator();
-  lfo.frequency.value = 0.06;
-  const lfoG = c.createGain();
-  lfoG.gain.value = 3;
-  lfo.connect(lfoG);
-  lfoG.connect(o1.frequency);
-  lfo.start();
+  // Crossfade out old track
+  if (currentSource && currentGainNode) {
+    const oldGain = currentGainNode;
+    const oldSource = currentSource;
+    oldGain.gain.cancelScheduledValues(t);
+    oldGain.gain.setValueAtTime(oldGain.gain.value, t);
+    oldGain.gain.linearRampToValueAtTime(0.001, t + CROSSFADE_DURATION);
+    setTimeout(() => {
+      try { oldSource.stop(); } catch {}
+      try { oldGain.disconnect(); } catch {}
+    }, (CROSSFADE_DURATION + 0.1) * 1000);
+  }
 
-  // High shimmer A4
-  const o4 = c.createOscillator();
-  o4.type = 'sine';
-  o4.frequency.value = 440;
-  const g4 = c.createGain();
-  g4.gain.value = 0.02;
-  o4.connect(g4);
-  g4.connect(musicGain);
-  o4.start();
+  // Fade in new track
+  const source = c.createBufferSource();
+  source.buffer = buffer;
+  source.loop = true;
 
-  // LFO for shimmer volume
-  const lfo2 = c.createOscillator();
-  lfo2.frequency.value = 0.12;
-  const lfoG2 = c.createGain();
-  lfoG2.gain.value = 0.015;
-  lfo2.connect(lfoG2);
-  lfoG2.connect(g4.gain);
-  lfo2.start();
+  const gain = c.createGain();
+  gain.gain.setValueAtTime(0.001, t);
+  gain.gain.linearRampToValueAtTime(MUSIC_VOLUME, t + CROSSFADE_DURATION);
 
-  musicNodes = [o1, o2, o3, o4, lfo, lfo2];
+  source.connect(gain);
+  gain.connect(masterGain);
+  source.start(0);
+
+  currentSource = source;
+  currentGainNode = gain;
+  currentTrackName = name;
 }
 
-export function stopMusic() {
-  if (!musicPlaying) return;
-  musicPlaying = false;
-  for (const n of musicNodes) { try { n.stop(); } catch {} }
-  musicNodes = [];
-  musicGain = null;
+export function fadeOutMusic() {
+  if (!currentSource || !currentGainNode) return;
+  const c = ensureCtx();
+  const t = c.currentTime;
+  musicPaused = true;
+  currentGainNode.gain.cancelScheduledValues(t);
+  currentGainNode.gain.setValueAtTime(currentGainNode.gain.value, t);
+  currentGainNode.gain.linearRampToValueAtTime(0.001, t + CROSSFADE_DURATION);
 }
 
-export function setMusicPlaying(playing) {
-  if (playing) startMusic();
-  else stopMusic();
+export function resumeMusic() {
+  if (!currentGainNode || !musicPaused) return;
+  const c = ensureCtx();
+  const t = c.currentTime;
+  musicPaused = false;
+  currentGainNode.gain.cancelScheduledValues(t);
+  currentGainNode.gain.setValueAtTime(currentGainNode.gain.value, t);
+  currentGainNode.gain.linearRampToValueAtTime(MUSIC_VOLUME, t + CROSSFADE_DURATION);
+}
+
+export function initAudio() {
+  // Create context immediately (suspended until user gesture — browser policy)
+  ensureCtx();
+
+  // Preload tracks and queue menu music right away.
+  // The AudioContext is suspended, so no audio plays yet. The fade-in ramp is
+  // scheduled at the context's currentTime (frozen while suspended). When the
+  // browser resumes the context on the first user gesture, the ramp executes
+  // and the music fades in naturally.
+  preloadMusic().then(() => playTrack('menu'));
+
+  // Ensure the context resumes on the very first user gesture
+  const handleGesture = () => {
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+    window.removeEventListener('click', handleGesture);
+    window.removeEventListener('keydown', handleGesture);
+    window.removeEventListener('touchstart', handleGesture);
+  };
+  window.addEventListener('click', handleGesture);
+  window.addEventListener('keydown', handleGesture);
+  window.addEventListener('touchstart', handleGesture);
 }

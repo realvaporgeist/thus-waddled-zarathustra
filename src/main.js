@@ -22,7 +22,7 @@ import { startDread, updateDread, isDreadActive, getDreadSpeedMultiplier, cleanu
 import {
   initAudio, playJump, playHit, playCollect, playGoldenCollect,
   playQuoteCollect, playDreadEnter, playDreadExit, playGameOver,
-  startMusic, stopMusic,
+  playTrack, fadeOutMusic, resumeMusic,
 } from './audio.js';
 import { getSelectedSkin } from './skins.js';
 import {
@@ -149,16 +149,16 @@ showMultiplier(false);
 function togglePause() {
   if (gameState === 'playing') {
     gameState = 'paused';
-    stopMusic();
+    fadeOutMusic();
     showPauseScreen(
-      () => { gameState = 'playing'; lastTime = performance.now(); startMusic(); },
+      () => { gameState = 'playing'; lastTime = performance.now(); resumeMusic(); },
       () => { gameState = 'gameover'; hidePauseScreen(); gameOver(); },
     );
   } else if (gameState === 'paused') {
     hidePauseScreen();
     gameState = 'playing';
     lastTime = performance.now();
-    startMusic();
+    resumeMusic();
   }
 }
 
@@ -316,14 +316,14 @@ function startGame() {
     },
   });
 
-  startMusic();
+  playTrack('gameplay');
   gameState = 'playing';
 }
 
 function gameOver() {
   gameState = 'gameover';
   playGameOver();
-  stopMusic();
+  playTrack('credits');
   stopDiscoVisuals();
   setAuroraDiscoMode(false);
   cleanupDread();
@@ -597,9 +597,11 @@ function gameLoop(now) {
           }
         } else if (pickup.type === 'abyssOrb' && !isDreadActive()) {
           playDreadEnter();
+          playTrack('dread');
           emitParticles({ ...COLLECTION_PARTICLES.abyssOrb, position: penguinForPickup.position.clone() });
           startDread(scene, () => {
             playDreadExit();
+            playTrack('gameplay');
             showMultiplier(false);
             dreadsSurvivedThisRun++;
           });
