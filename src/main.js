@@ -17,6 +17,7 @@ import {
 } from './screens.js';
 import { checkAchievements, incrementPersistentStats, collectQuote } from './achievements.js';
 import { startDread, updateDread, isDreadActive, getDreadSpeedMultiplier, cleanupDread } from './dread.js';
+import { initAudio, playJump, playHit, playCollect, playDreadEnter, playDreadExit, playGameOver } from './audio.js';
 import {
   CAMERA_OFFSET, CAMERA_LOOK_AHEAD, BASE_SPEED, SPEED_INCREMENT,
   MAX_SPEED, INVINCIBILITY_DURATION, POINTS_PER_METER, FISH_POINTS,
@@ -50,6 +51,8 @@ createTerrain(scene);
 createPenguin(scene);
 createHUD();
 
+initAudio();
+
 // Hide HUD on initial load (menu state)
 showHUD(false);
 showMultiplier(false);
@@ -60,7 +63,7 @@ showMultiplier(false);
 initControls({
   onLeft: () => { if (gameState === 'playing') switchLane(-1); },
   onRight: () => { if (gameState === 'playing') switchLane(1); },
-  onJump: () => { if (gameState === 'playing') jump(); },
+  onJump: () => { if (gameState === 'playing') { jump(); playJump(); } },
   onSlide: () => { if (gameState === 'playing') slide(); },
   onAction: () => { /* reserved for future use */ },
 });
@@ -104,6 +107,7 @@ function startGame() {
 
 function gameOver() {
   gameState = 'gameover';
+  playGameOver();
   showHUD(false);
 
   // Achievement checking
@@ -171,6 +175,7 @@ function gameLoop(now) {
       for (const obs of getActiveObstacles()) {
         if (checkCollision(penguin.position, isPlayerSliding(), isPlayerJumping(), obs)) {
           const damage = isDreadActive() ? DREAD_DAMAGE_MULTIPLIER : 1;
+          playHit();
           hearts -= damage;
           updateHearts(hearts);
           if (hearts <= 0) {
@@ -192,6 +197,7 @@ function gameLoop(now) {
       const pickups = checkCollectiblePickup(penguinForPickup.position, getCurrentLane());
       for (const pickup of pickups) {
         if (pickup.type === 'fish') {
+          playCollect();
           fishCount++;
           score += FISH_POINTS * scoreMultiplier;
           updateFishCount(fishCount);
@@ -200,6 +206,7 @@ function gameLoop(now) {
             updateHearts(hearts);
           }
         } else if (pickup.type === 'goldenFish') {
+          playCollect();
           score += GOLDEN_FISH_POINTS * scoreMultiplier;
           fishCount++;
           updateFishCount(fishCount);
@@ -207,7 +214,9 @@ function gameLoop(now) {
           const isNew = collectQuote(pickup.quoteText);
           if (isNew) newAchievements.push('Quote: "' + pickup.quoteText + '"');
         } else if (pickup.type === 'abyssOrb' && !isDreadActive()) {
+          playDreadEnter();
           startDread(scene, () => {
+            playDreadExit();
             showMultiplier(false);
             dreadsSurvivedThisRun++;
           });
