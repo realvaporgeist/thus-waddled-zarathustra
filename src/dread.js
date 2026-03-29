@@ -2,6 +2,8 @@
 import * as THREE from 'three';
 import { transitionToDread } from './scene.js';
 import { DREAD_DURATION, DREAD_SPEED_MULTIPLIER, TERRAIN_Y } from './constants.js';
+import { setAuroraDreadBlend } from './aurora.js';
+import { setDreadOverride } from './weather.js';
 
 let active = false;
 let timer = 0;
@@ -29,6 +31,9 @@ export function startDread(scene, onEnd) {
   for (const creature of shadowCreatures) {
     scene.add(creature);
   }
+
+  setAuroraDreadBlend(0); // will be animated in updateDread
+  setDreadOverride(true);
 }
 
 function createDreadEyes() {
@@ -105,6 +110,9 @@ export function updateDread(delta) {
 
   transitionToDread(transitionProgress);
 
+  // Aurora shifts to dread colors
+  setAuroraDreadBlend(transitionProgress);
+
   // Eyes visibility and pulsing
   if (dreadEyes) {
     dreadEyes.visible = transitionProgress > 0.3;
@@ -132,6 +140,8 @@ function endDread() {
   active = false;
   transitionProgress = 0;
   transitionToDread(0);
+  setAuroraDreadBlend(0);
+  setDreadOverride(false);
 
   if (dreadEyes) {
     dreadEyes.parent?.remove(dreadEyes);
@@ -156,6 +166,8 @@ export function cleanupDread() {
   if (active) {
     active = false;
     transitionToDread(0);
+    setAuroraDreadBlend(0);
+    setDreadOverride(false);
     if (dreadEyes) {
       dreadEyes.parent?.remove(dreadEyes);
       dreadEyes = null;
