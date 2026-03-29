@@ -21,11 +21,24 @@ import {
 import { spawnFishAt } from './collectibles.js';
 
 const activeObstacles = [];
+const obstacleHistory = [];
+const MAX_HISTORY = 50;
 let nextSpawnZ = -20;
 let drawDistanceMult = 1;
 
 export function setObstacleDrawDistance(mult) {
   drawDistanceMult = mult;
+}
+
+export function getObstacleHistory() {
+  return obstacleHistory;
+}
+
+export function spawnBossObstacle(scene, worldZ, lane, typeName) {
+  const { mesh, height, type } = createObstacleMesh(typeName);
+  mesh.position.set(LANE_POSITIONS[lane], TERRAIN_Y, worldZ);
+  scene.add(mesh);
+  activeObstacles.push({ mesh, height, type, typeName, lane });
 }
 
 const pool = {
@@ -377,17 +390,23 @@ export function spawnObstacle(scene, worldZ, difficulty, distance, weather) {
   // Special spawn for multi-lane obstacles
   if (typeName === 'iceWall') {
     spawnIceWall(scene, -OBSTACLE_SPAWN_DISTANCE);
+    obstacleHistory.push({ typeName, lane: -1 });
+    if (obstacleHistory.length > MAX_HISTORY) obstacleHistory.shift();
     nextSpawnZ = worldZ - getSpawnGap(difficulty);
     return;
   }
   if (typeName === 'windGust') {
     spawnWindGust(scene, -OBSTACLE_SPAWN_DISTANCE);
+    obstacleHistory.push({ typeName, lane: 1 });
+    if (obstacleHistory.length > MAX_HISTORY) obstacleHistory.shift();
     nextSpawnZ = worldZ - getSpawnGap(difficulty);
     return;
   }
   if (typeName === 'philosopherFog') {
     const lane = Math.floor(Math.random() * LANE_POSITIONS.length);
     spawnPhilosopherFog(scene, -OBSTACLE_SPAWN_DISTANCE, lane);
+    obstacleHistory.push({ typeName, lane });
+    if (obstacleHistory.length > MAX_HISTORY) obstacleHistory.shift();
     nextSpawnZ = worldZ - getSpawnGap(difficulty);
     return;
   }
@@ -398,6 +417,9 @@ export function spawnObstacle(scene, worldZ, difficulty, distance, weather) {
   mesh.position.z = -OBSTACLE_SPAWN_DISTANCE;
   scene.add(mesh);
   activeObstacles.push({ mesh, height, type, typeName, lane });
+
+  obstacleHistory.push({ typeName, lane });
+  if (obstacleHistory.length > MAX_HISTORY) obstacleHistory.shift();
 
   nextSpawnZ = worldZ - getSpawnGap(difficulty);
 }

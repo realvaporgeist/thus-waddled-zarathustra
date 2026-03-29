@@ -61,7 +61,7 @@ import {
 import {
   initBosses, updateBosses, isBossActive, isBossEncounter,
   getBossState, getCurrentBoss, getBossTimer, notifyBossHit,
-  cleanupBosses,
+  cleanupBosses, notifySerpentHit,
 } from './bosses.js';
 import {
   CAMERA_OFFSET, CAMERA_LOOK_AHEAD, BASE_SPEED, SPEED_INCREMENT,
@@ -294,6 +294,9 @@ function startGame() {
       if (wasHit) resetCombo();
       fillCombo(COMBO_FILL_BOSS_SURVIVE);
     },
+    onTitanStomp: () => {
+      triggerScreenShake(SCREEN_SHAKE_INTENSITY_HEAVY);
+    },
   });
 
   startMusic();
@@ -471,7 +474,16 @@ function gameLoop(now) {
           lastDamageDistanceForCombo = distance;
 
           // Notify boss system of hit
-          if (isBossActive()) notifyBossHit();
+          if (isBossActive()) {
+            notifyBossHit();
+            if (getCurrentBoss().id === 'abyssSerpent') {
+              const caught = notifySerpentHit();
+              if (caught) {
+                gameOver();
+                break;
+              }
+            }
+          }
 
           if (hearts <= 0) {
             gameOver();
