@@ -9,6 +9,7 @@ let multiplierEl = null;
 let pauseBtn = null;
 let toastEl = null;
 let toastTimer = null;
+let comboContainer = null;
 
 export function createHUD(onPause) {
   hudContainer = document.createElement('div');
@@ -42,6 +43,15 @@ export function createHUD(onPause) {
   dreadBar.className = 'hidden';
   dreadBar.innerHTML = '<div id="dread-timer-fill"></div>';
   document.getElementById('ui-overlay').appendChild(dreadBar);
+
+  // Combo meter bar
+  comboContainer = document.createElement('div');
+  comboContainer.id = 'combo-container';
+  comboContainer.innerHTML = `
+    <div id="combo-label">MORTAL — 1.0x</div>
+    <div id="combo-bar"><div id="combo-fill"></div></div>
+  `;
+  document.body.appendChild(comboContainer);
 
   heartsEl = document.getElementById('hud-hearts');
   scoreEl = document.getElementById('hud-score');
@@ -80,6 +90,7 @@ export function showMultiplier(show) {
 export function showHUD(visible) {
   if (hudContainer) hudContainer.style.display = visible ? 'flex' : 'none';
   if (pauseBtn) pauseBtn.style.display = visible ? 'block' : 'none';
+  if (comboContainer) comboContainer.style.display = visible ? 'block' : 'none';
 }
 
 export function showToast(text, duration = 2000) {
@@ -135,4 +146,20 @@ export function updateDreadTimerBar(progress, visible) {
   if (!bar || !fill) return;
   bar.classList.toggle('hidden', !visible);
   fill.style.width = `${progress * 100}%`;
+}
+
+export function updateComboBar(meter, tier) {
+  const label = document.getElementById('combo-label');
+  const fill = document.getElementById('combo-fill');
+  const container = document.getElementById('combo-container');
+  if (!label || !fill || !container) return;
+  label.textContent = `${tier.name} — ${tier.multiplier}x`;
+  label.style.color = tier.color;
+  fill.style.width = `${meter * 100}%`;
+  fill.style.background = `linear-gradient(90deg, ${tier.color}88, ${tier.color})`;
+  container.classList.toggle('combo-pulse', tier.name === 'Übermensch');
+}
+
+export function flashComboTierUp(tier) {
+  showToast(`${tier.name.toUpperCase()} — ${tier.multiplier}x!`, 1500);
 }

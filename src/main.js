@@ -25,6 +25,10 @@ import {
   startMusic, stopMusic,
 } from './audio.js';
 import { getSelectedSkin } from './skins.js';
+import {
+  initCombo, updateCombo, fillCombo, resetCombo, getComboMeter,
+  getComboTier, getComboMultiplier, cleanupCombo,
+} from './combo.js';
 import { initParticles, updateParticles, emitParticles, clearParticles } from './particles.js';
 import { initAurora, updateAurora } from './aurora.js';
 import { initWeather, updateWeather, setWeather } from './weather.js';
@@ -38,6 +42,7 @@ import {
 } from './scene.js';
 import {
   bounceScore, shakeHeart, pulseLastHeart, updateDreadTimerBar,
+  updateComboBar, flashComboTierUp,
 } from './hud.js';
 import {
   CAMERA_OFFSET, CAMERA_LOOK_AHEAD, BASE_SPEED, SPEED_INCREMENT,
@@ -50,6 +55,7 @@ import {
   CAMERA_INTRO_LOOK_START, CAMERA_INTRO_LOOK_END,
   CAMERA_GAMEPLAY_TRANSITION, CAMERA_IDLE_SWAY_SPEED, CAMERA_IDLE_SWAY_AMOUNT,
   NEAR_MISS_THRESHOLD, LANE_WIDTH,
+  COMBO_FILL_NEAR_MISS, COMBO_FILL_FISH, COMBO_FILL_GOLDEN_FISH, COMBO_FILL_NO_DAMAGE_100M,
 } from './constants.js';
 
 // ---------------------------------------------------------------------------
@@ -70,6 +76,7 @@ let newAchievements = [];
 let dreadsSurvivedThisRun = 0;
 let lastDamageDistance = 0; // distance at last damage
 let longestNoDamage = 0;
+let lastDamageDistanceForCombo = 0;
 
 // Camera state machine
 let cameraState = 'intro'; // 'intro' | 'idle' | 'transitioning' | 'gameplay'
@@ -167,6 +174,9 @@ function startGame() {
   longestNoDamage = 0;
 
   cleanupDread();
+  cleanupCombo();
+  initCombo({ onTierUp: flashComboTierUp });
+  lastDamageDistanceForCombo = 0;
   clearParticles();
 
   resetPenguin();
@@ -194,6 +204,7 @@ function gameOver() {
   playGameOver();
   stopMusic();
   cleanupDread();
+  cleanupCombo();
   showHUD(false);
 
   const quickDeath = elapsed < 5;
@@ -275,19 +286,28 @@ function gameLoop(now) {
     playerZ -= currentSpeed * delta;
 
     distance += currentSpeed * delta;
-    const scoreMultiplier = isDreadActive() ? DREAD_MULTIPLIER : 1;
-    score += currentSpeed * delta * POINTS_PER_METER * scoreMultiplier;
+    const comboMult = getComboMultiplier();
+    const dreadScoreMult = isDreadActive() ? DREAD_MULTIPLIER : 1;
+    score += currentSpeed * delta * POINTS_PER_METER * comboMult * dreadScoreMult;
     updateScore(score);
 
     updatePenguin(delta, currentSpeed);
     updateTerrain(currentSpeed, delta);
     updateDread(delta);
+    updateCombo(delta);
+    updateComboBar(getComboMeter(), getComboTier());
 
     if (isDreadActive()) {
       const dreadProgress = 1 - (getDreadTimer() / DREAD_DURATION);
       updateDreadTimerBar(dreadProgress, true);
     } else {
       updateDreadTimerBar(0, false);
+    }
+
+    // No-damage combo bonus every 100m
+    if (distance - lastDamageDistanceForCombo >= 100) {
+      fillCombo(COMBO_FILL_NO_DAMAGE_100M);
+      lastDamageDistanceForCombo = distance - (distance - lastDamageDistanceForCombo) % 100;
     }
 
     // Obstacle spawning & movement
@@ -316,6 +336,10 @@ function gameLoop(now) {
           if (streak > longestNoDamage) longestNoDamage = streak;
           lastDamageDistance = distance;
 
+          // Reset combo on damage
+          resetCombo();
+          lastDamageDistanceForCombo = distance;
+
           if (hearts <= 0) {
             gameOver();
             break;
@@ -336,6 +360,7 @@ function gameLoop(now) {
             if (dx < LANE_WIDTH + NEAR_MISS_THRESHOLD) {
               obs.nearMissShown = true;
               showToast('CLOSE!', 800);
+              fillCombo(COMBO_FILL_NEAR_MISS);
             }
           }
         }
@@ -354,8 +379,9 @@ function gameLoop(now) {
           playCollect();
           emitParticles({ ...COLLECTION_PARTICLES.fish, position: penguinForPickup.position.clone() });
           bounceScore();
+          fillCombo(COMBO_FILL_FISH);
           fishCount++;
-          score += FISH_POINTS * scoreMultiplier;
+          score += FISH_POINTS * dreadScoreMult;
           updateFishCount(fishCount);
           if (fishCount % FISH_PER_HEAL === 0 && hearts < MAX_HEARTS) {
             hearts++;
@@ -365,7 +391,8 @@ function gameLoop(now) {
           playGoldenCollect();
           emitParticles({ ...COLLECTION_PARTICLES.goldenFish, position: penguinForPickup.position.clone() });
           bounceScore();
-          score += GOLDEN_FISH_POINTS * scoreMultiplier;
+          fillCombo(COMBO_FILL_GOLDEN_FISH);
+          score += GOLDEN_FISH_POINTS * dreadScoreMult;
           fishCount++;
           goldenFishCount++;
           updateFishCount(fishCount);
