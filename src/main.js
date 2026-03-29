@@ -48,7 +48,9 @@ import {
   triggerScreenShake, updateScreenEffects, getShakeOffset,
   showRedVignette, setSpeedLinesVisible,
   showSlowTimeFilter, hideSlowTimeFilter,
+  startDiscoVisuals, updateDiscoVisuals, stopDiscoVisuals,
 } from './scene.js';
+import { setAuroraDiscoMode } from './aurora.js';
 import {
   bounceScore, shakeHeart, pulseLastHeart, updateDreadTimerBar,
   updateComboBar, flashComboTierUp, updatePowerupIcons, updateAbilityButton,
@@ -66,6 +68,7 @@ import {
   NEAR_MISS_THRESHOLD, LANE_WIDTH,
   COMBO_FILL_NEAR_MISS, COMBO_FILL_FISH, COMBO_FILL_GOLDEN_FISH, COMBO_FILL_NO_DAMAGE_100M,
   SHIELD_SHATTER_PARTICLES, MAGNET_VORTEX_PARTICLES, RUSH_ACTIVATE_PARTICLES, SLOW_TIME_PARTICLES,
+  DISCO_SCORE_MULTIPLIER,
 } from './constants.js';
 
 // ---------------------------------------------------------------------------
@@ -87,6 +90,7 @@ let dreadsSurvivedThisRun = 0;
 let lastDamageDistance = 0; // distance at last damage
 let longestNoDamage = 0;
 let lastDamageDistanceForCombo = 0;
+let discoTriggeredThisRun = false;
 
 // Camera state machine
 let cameraState = 'intro'; // 'intro' | 'idle' | 'transitioning' | 'gameplay'
@@ -218,6 +222,9 @@ function startGame() {
   cleanupCombo();
   hideShieldVisual();
   hideSlowTimeFilter();
+  stopDiscoVisuals();
+  setAuroraDiscoMode(false);
+  discoTriggeredThisRun = false;
   initCombo({ onTierUp: flashComboTierUp });
   initPowerups({
     onShieldBreak: () => {
@@ -225,8 +232,16 @@ function startGame() {
       emitParticles({ ...SHIELD_SHATTER_PARTICLES, position: getPenguinGroup().position.clone() });
       showToast('SHIELD SHATTERED', 1000);
     },
-    onDiscoStart: () => { /* will add disco visuals in Task 5 */ },
-    onDiscoEnd: () => { /* will add disco cleanup in Task 5 */ },
+    onDiscoStart: () => {
+      startDiscoVisuals();
+      setAuroraDiscoMode(true);
+      showToast('\u{1FA69} DISCO MODE! \u{1FA69}', 3000);
+      discoTriggeredThisRun = true;
+    },
+    onDiscoEnd: () => {
+      stopDiscoVisuals();
+      setAuroraDiscoMode(false);
+    },
     onEffectStart: (key) => {
       if (key === 'slowTime') showSlowTimeFilter();
       if (key === 'shield') showShieldVisual();
@@ -263,6 +278,8 @@ function gameOver() {
   gameState = 'gameover';
   playGameOver();
   stopMusic();
+  stopDiscoVisuals();
+  setAuroraDiscoMode(false);
   cleanupDread();
   cleanupCombo();
   cleanupPowerups();
@@ -510,6 +527,19 @@ function gameLoop(now) {
     // Shield visual rotation
     if (isShieldActive()) {
       updateShieldVisual(delta);
+    }
+
+    // Disco mode — auto-collect all fish and update visuals
+    if (isDiscoActive()) {
+      const penguinPos = getPenguinGroup()?.position;
+      if (penguinPos) {
+        const discoPickups = autoCollectAllFish(penguinPos, scene);
+        for (const p of discoPickups) {
+          if (p.type === 'fish') { fishCount++; score += FISH_POINTS * DISCO_SCORE_MULTIPLIER; updateFishCount(fishCount); }
+          if (p.type === 'goldenFish') { goldenFishCount++; fishCount++; score += GOLDEN_FISH_POINTS * DISCO_SCORE_MULTIPLIER; updateFishCount(fishCount); }
+        }
+      }
+      updateDiscoVisuals(delta);
     }
   }
 

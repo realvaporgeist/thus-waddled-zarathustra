@@ -11,6 +11,11 @@ let scene = null;
 let currentOpacity = 0.4;
 let targetOpacity = 0.4;
 let dreadBlend = 0;
+let discoMode = false;
+
+export function setAuroraDiscoMode(active) {
+  discoMode = active;
+}
 
 const normalColors = [
   new THREE.Color(0x00ff88),
@@ -116,6 +121,18 @@ export function initAurora(sceneRef) {
 }
 
 export function updateAurora(delta) {
+  if (discoMode) {
+    const hue = (performance.now() * 0.001) % 1;
+    for (const ribbon of ribbons) {
+      ribbon.material.uniforms.uColor1.value.setHSL(hue, 1, 0.5);
+      ribbon.material.uniforms.uColor2.value.setHSL((hue + 0.33) % 1, 1, 0.5);
+      ribbon.material.uniforms.uColor3.value.setHSL((hue + 0.66) % 1, 1, 0.5);
+      ribbon.material.uniforms.uOpacity.value = 1.0;
+      ribbon.material.uniforms.uTime.value = performance.now() * 0.001 * AURORA_WAVE_SPEED;
+    }
+    return; // Skip normal aurora update
+  }
+
   const time = performance.now() * 0.001;
 
   currentOpacity += (targetOpacity - currentOpacity) * delta * 2;

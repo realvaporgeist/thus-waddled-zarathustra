@@ -4,6 +4,7 @@ import { transitionToDread } from './scene.js';
 import { DREAD_DURATION, DREAD_SPEED_MULTIPLIER, TERRAIN_Y } from './constants.js';
 import { setAuroraDreadBlend } from './aurora.js';
 import { setDreadOverride } from './weather.js';
+import { isDiscoActive } from './powerups.js';
 
 let active = false;
 let timer = 0;
@@ -94,6 +95,7 @@ function createShadowCreatures() {
 
 export function updateDread(delta) {
   if (!active) return;
+  if (isDiscoActive()) return; // Disco overrides everything
 
   timer -= delta;
 

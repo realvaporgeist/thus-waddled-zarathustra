@@ -13,9 +13,11 @@ import {
   DREAD_FOG_NEAR,
   DREAD_FOG_FAR,
   SCREEN_SHAKE_DURATION,
+  DISCO_STROBE_INTERVAL,
 } from './constants.js';
 
 let scene, camera, renderer;
+let directionalLight = null;
 
 const normalSky = new THREE.Color(SKY_COLOR);
 const dreadSky = new THREE.Color(DREAD_SKY_COLOR);
@@ -52,7 +54,7 @@ export function initScene(canvas) {
   const ambientLight = new THREE.AmbientLight(0xddeeff, 0.7);
   scene.add(ambientLight);
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+  directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
   directionalLight.position.set(5, 15, 10);
   directionalLight.castShadow = true;
   directionalLight.shadow.mapSize.width = 1024;
@@ -130,6 +132,7 @@ function onResize() {
 export function getScene() { return scene; }
 export function getCamera() { return camera; }
 export function getRenderer() { return renderer; }
+export function getDirectionalLight() { return directionalLight; }
 
 export function render() {
   renderer.render(scene, camera);
@@ -203,4 +206,51 @@ export function hideSlowTimeFilter() {
   if (!slowTimeOverlay) return;
   slowTimeOverlay.remove();
   slowTimeOverlay = null;
+}
+
+// ---------------------------------------------------------------------------
+// Disco mode visuals
+// ---------------------------------------------------------------------------
+let discoStrobeTimer = 0;
+let discoStrobeColors = [0xff0040, 0x00ff80, 0x4080ff, 0xffff00, 0xff00ff, 0x00ffff];
+let discoColorIndex = 0;
+
+export function startDiscoVisuals() {
+  discoStrobeTimer = 0;
+  discoColorIndex = 0;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'disco-overlay';
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:45;pointer-events:none;opacity:0;
+    transition:opacity 0.3s;
+  `;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.style.opacity = '1');
+}
+
+export function updateDiscoVisuals(delta) {
+  if (!directionalLight) return;
+  discoStrobeTimer += delta;
+  if (discoStrobeTimer >= DISCO_STROBE_INTERVAL) {
+    discoStrobeTimer = 0;
+    discoColorIndex = (discoColorIndex + 1) % discoStrobeColors.length;
+    const color = discoStrobeColors[discoColorIndex];
+    directionalLight.color.setHex(color);
+    directionalLight.intensity = 1.2;
+
+    const overlay = document.getElementById('disco-overlay');
+    if (overlay) {
+      overlay.style.background = `radial-gradient(circle, ${new THREE.Color(color).getStyle()}22, transparent 70%)`;
+    }
+  }
+}
+
+export function stopDiscoVisuals() {
+  if (directionalLight) {
+    directionalLight.color.setHex(0xffffff);
+    directionalLight.intensity = 0.6;
+  }
+  const overlay = document.getElementById('disco-overlay');
+  if (overlay) overlay.remove();
 }
