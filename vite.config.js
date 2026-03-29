@@ -4,7 +4,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   root: '.',
   publicDir: 'public',
-  base: '/nietzsche-penguin-the-game/',
+  base: '/thus-waddled-zarathustra/',
   build: {
     outDir: 'dist',
   },
