@@ -180,3 +180,27 @@ export function setSpeedLinesVisible(visible) {
     el.classList.toggle('active', visible);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Slow-time visual filter
+// ---------------------------------------------------------------------------
+let slowTimeOverlay = null;
+
+export function showSlowTimeFilter() {
+  if (slowTimeOverlay) return;
+  slowTimeOverlay = document.createElement('div');
+  slowTimeOverlay.id = 'slow-time-overlay';
+  slowTimeOverlay.style.cssText = `
+    position:fixed;inset:0;z-index:50;pointer-events:none;
+    background:rgba(106,90,205,0.15);
+    mix-blend-mode:color;
+    transition:opacity 0.3s;
+  `;
+  document.body.appendChild(slowTimeOverlay);
+}
+
+export function hideSlowTimeFilter() {
+  if (!slowTimeOverlay) return;
+  slowTimeOverlay.remove();
+  slowTimeOverlay = null;
+}

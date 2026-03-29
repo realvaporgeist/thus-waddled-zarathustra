@@ -11,6 +11,12 @@ import {
   QUOTE_SPAWN_CHANCE,
   ABYSS_ORB_MIN_INTERVAL,
   ABYSS_ORB_MAX_INTERVAL,
+  SHIELD_SPAWN_CHANCE,
+  SHIELD_COOLDOWN,
+  MAGNET_SPAWN_CHANCE,
+  MAGNET_COOLDOWN,
+  MAGNET_PULL_SPEED,
+  LANE_WIDTH,
 } from './constants.js';
 import { getActiveObstacles } from './obstacles.js';
 import { QUOTE_DATA } from './achievements.js';
@@ -26,6 +32,8 @@ const collectEffects = [];
 // ---------------------------------------------------------------------------
 let nextSpawnZ = -15;
 let orbCooldownEnd = ABYSS_ORB_MIN_INTERVAL;
+let shieldCooldownTimer = 0;
+let magnetCooldownTimer = 0;
 
 // ---------------------------------------------------------------------------
 // Shared geometry / material pools
@@ -186,6 +194,46 @@ function createAbyssOrbMesh() {
   return g;
 }
 
+function createShieldPickupMesh() {
+  const group = new THREE.Group();
+  const geo = new THREE.IcosahedronGeometry(0.5, 1);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x64c8ff, transparent: true, opacity: 0.6,
+    emissive: 0x64c8ff, emissiveIntensity: 0.3,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  group.add(mesh);
+  return group;
+}
+
+function createMagnetPickupMesh() {
+  const group = new THREE.Group();
+  const geo = new THREE.TorusGeometry(0.35, 0.12, 8, 16);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x00e5ff, emissive: 0x00e5ff, emissiveIntensity: 0.4,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = Math.PI / 2;
+  group.add(mesh);
+  return group;
+}
+
+function spawnShieldPickup(scene, baseZ, lane) {
+  if (lane < 0) return;
+  const mesh = createShieldPickupMesh();
+  mesh.position.set(LANE_POSITIONS[lane], TERRAIN_Y + FISH_FLOAT_HEIGHT, baseZ);
+  scene.add(mesh);
+  activeCollectibles.push({ mesh, type: 'shield', lane, collected: false, collectTime: 0 });
+}
+
+function spawnMagnetPickup(scene, baseZ, lane) {
+  if (lane < 0) return;
+  const mesh = createMagnetPickupMesh();
+  mesh.position.set(LANE_POSITIONS[lane], TERRAIN_Y + FISH_FLOAT_HEIGHT, baseZ);
+  scene.add(mesh);
+  activeCollectibles.push({ mesh, type: 'magnet', lane, collected: false, collectTime: 0 });
+}
+
 // ---------------------------------------------------------------------------
 // Collect effect (expanding sphere)
 // ---------------------------------------------------------------------------
@@ -214,8 +262,23 @@ export function spawnCollectibles(scene, worldZ, elapsed) {
     activeCollectibles.push({ mesh, type: 'abyssOrb', lane, collected: false, collectTime: 0 });
     nextSpawnZ = worldZ - 20;
     orbCooldownEnd = elapsed + ABYSS_ORB_MIN_INTERVAL + Math.random() * (ABYSS_ORB_MAX_INTERVAL - ABYSS_ORB_MIN_INTERVAL);
+    return;
+  }
 
-  } else if (roll < 0.02 + QUOTE_SPAWN_CHANCE) {
+  if (shieldCooldownTimer <= 0 && Math.random() < SHIELD_SPAWN_CHANCE) {
+    spawnShieldPickup(scene, spawnZ, getFreeLane(spawnZ));
+    shieldCooldownTimer = SHIELD_COOLDOWN;
+    nextSpawnZ = worldZ - 15;
+    return;
+  }
+  if (magnetCooldownTimer <= 0 && Math.random() < MAGNET_SPAWN_CHANCE) {
+    spawnMagnetPickup(scene, spawnZ, getFreeLane(spawnZ));
+    magnetCooldownTimer = MAGNET_COOLDOWN;
+    nextSpawnZ = worldZ - 15;
+    return;
+  }
+
+  if (roll < 0.02 + QUOTE_SPAWN_CHANCE) {
     const lane = getFreeLane(spawnZ);
     if (lane < 0) { nextSpawnZ = worldZ - 5; return; }
     const mesh = createQuoteScrollMesh();
@@ -250,6 +313,9 @@ export function spawnCollectibles(scene, worldZ, elapsed) {
 }
 
 export function updateCollectibles(delta, speed) {
+  if (shieldCooldownTimer > 0) shieldCooldownTimer -= delta;
+  if (magnetCooldownTimer > 0) magnetCooldownTimer -= delta;
+
   // Update collect effects
   for (let i = collectEffects.length - 1; i >= 0; i--) {
     const eff = collectEffects[i];
@@ -329,6 +395,33 @@ export function clearCollectibles(scene) {
   collectEffects.length = 0;
   nextSpawnZ = -15;
   orbCooldownEnd = ABYSS_ORB_MIN_INTERVAL;
+  shieldCooldownTimer = 0;
+  magnetCooldownTimer = 0;
+}
+
+export function applyMagnetPull(playerLane, delta) {
+  const playerX = LANE_POSITIONS[playerLane];
+  for (const c of activeCollectibles) {
+    if (c.collected || (c.type !== 'fish' && c.type !== 'goldenFish')) continue;
+    const dx = Math.abs(c.mesh.position.x - playerX);
+    if (dx > 0.5 && dx < LANE_WIDTH * 2) {
+      const dir = playerX > c.mesh.position.x ? 1 : -1;
+      c.mesh.position.x += dir * (LANE_WIDTH / MAGNET_PULL_SPEED) * delta;
+    }
+  }
+}
+
+export function autoCollectAllFish(penguinPos, scene) {
+  const collected = [];
+  for (const c of activeCollectibles) {
+    if (c.collected) continue;
+    if (c.type === 'fish' || c.type === 'goldenFish') {
+      c.collected = true;
+      c.collectTime = 0;
+      collected.push({ type: c.type });
+    }
+  }
+  return collected;
 }
 
 export function getNietzscheQuotes() {

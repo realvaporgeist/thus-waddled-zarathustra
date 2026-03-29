@@ -7,6 +7,7 @@ import {
   IDLE_WADDLE_SPEED, IDLE_BLINK_MIN, IDLE_BLINK_MAX,
   IDLE_BLINK_DURATION, IDLE_LOOK_MIN, IDLE_LOOK_MAX,
   IDLE_LOOK_DURATION, KNOCKBACK_DURATION, KNOCKBACK_DISTANCE,
+  LANE_WIDTH,
 } from './constants.js';
 
 let penguinGroup = null;
@@ -34,6 +35,9 @@ let idleLookProgress = 0;
 // Knockback state
 let knockbackActive = false;
 let knockbackTimer = 0;
+
+// Shield visual
+let shieldMesh = null;
 
 // Head reference for look animation
 let head = null;
@@ -361,4 +365,44 @@ export function triggerKnockback() {
 
 export function updateIdleAnimation(delta) {
   updateIdle(delta);
+}
+
+// ---------------------------------------------------------------------------
+// Shield visual
+// ---------------------------------------------------------------------------
+export function showShieldVisual() {
+  if (shieldMesh || !penguinGroup) return;
+  const geo = new THREE.SphereGeometry(1.0, 16, 12);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x64c8ff, transparent: true, opacity: 0.2,
+    emissive: 0x64c8ff, emissiveIntensity: 0.2,
+    side: THREE.DoubleSide,
+  });
+  shieldMesh = new THREE.Mesh(geo, mat);
+  shieldMesh.position.y = 0.6;
+  penguinGroup.add(shieldMesh);
+}
+
+export function hideShieldVisual() {
+  if (!shieldMesh || !penguinGroup) return;
+  penguinGroup.remove(shieldMesh);
+  shieldMesh.geometry.dispose();
+  shieldMesh.material.dispose();
+  shieldMesh = null;
+}
+
+export function updateShieldVisual(delta) {
+  if (!shieldMesh) return;
+  shieldMesh.rotation.y += delta * 0.5;
+}
+
+// ---------------------------------------------------------------------------
+// Drift (for blizzard weather)
+// ---------------------------------------------------------------------------
+export function applyDrift(dx) {
+  if (!penguinGroup) return;
+  penguinGroup.position.x += dx;
+  const minX = LANE_POSITIONS[0] - LANE_WIDTH * 0.4;
+  const maxX = LANE_POSITIONS[2] + LANE_WIDTH * 0.4;
+  penguinGroup.position.x = Math.max(minX, Math.min(maxX, penguinGroup.position.x));
 }

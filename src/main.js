@@ -10,7 +10,7 @@ import {
 import { initControls } from './controls.js';
 import { spawnObstacle, updateObstacles, getActiveObstacles, clearObstacles } from './obstacles.js';
 import { checkCollision } from './collision.js';
-import { spawnCollectibles, updateCollectibles, checkCollectiblePickup, clearCollectibles } from './collectibles.js';
+import { spawnCollectibles, updateCollectibles, checkCollectiblePickup, clearCollectibles, applyMagnetPull, autoCollectAllFish } from './collectibles.js';
 import { createHUD, updateScore, updateHearts, updateFishCount, showHUD, showMultiplier, showToast } from './hud.js';
 import {
   createStartScreen, hideStartScreen, showStartScreen,
@@ -34,7 +34,7 @@ import {
   initPowerups, updatePowerups, getActiveEffects, getSpeedMultiplier,
   getScoreMultiplier, isShieldActive, hitShield, isInvincibleFromPowerup,
   isMagnetActive, isDiscoActive, activateSlowTime, activateRush,
-  cycleAbility, getSelectedAbility, cleanupPowerups,
+  activateShield, activateMagnet, cycleAbility, getSelectedAbility, cleanupPowerups,
 } from './powerups.js';
 import { initParticles, updateParticles, emitParticles, clearParticles } from './particles.js';
 import { initAurora, updateAurora } from './aurora.js';
@@ -42,10 +42,12 @@ import { initWeather, updateWeather, setWeather } from './weather.js';
 import { swayMountains } from './terrain.js';
 import {
   setIdleMode, updateIdleAnimation, triggerKnockback,
+  showShieldVisual, hideShieldVisual, updateShieldVisual,
 } from './penguin.js';
 import {
   triggerScreenShake, updateScreenEffects, getShakeOffset,
   showRedVignette, setSpeedLinesVisible,
+  showSlowTimeFilter, hideSlowTimeFilter,
 } from './scene.js';
 import {
   bounceScore, shakeHeart, pulseLastHeart, updateDreadTimerBar,
@@ -63,6 +65,7 @@ import {
   CAMERA_GAMEPLAY_TRANSITION, CAMERA_IDLE_SWAY_SPEED, CAMERA_IDLE_SWAY_AMOUNT,
   NEAR_MISS_THRESHOLD, LANE_WIDTH,
   COMBO_FILL_NEAR_MISS, COMBO_FILL_FISH, COMBO_FILL_GOLDEN_FISH, COMBO_FILL_NO_DAMAGE_100M,
+  SHIELD_SHATTER_PARTICLES, MAGNET_VORTEX_PARTICLES, RUSH_ACTIVATE_PARTICLES, SLOW_TIME_PARTICLES,
 } from './constants.js';
 
 // ---------------------------------------------------------------------------
@@ -174,9 +177,13 @@ function activateSelectedAbility() {
   if (sel === 'slowTime' && isSlowTimeCharged() && !effects.slowTime) {
     consumeSlowTimeCharge();
     activateSlowTime();
+    emitParticles({ ...SLOW_TIME_PARTICLES, position: getPenguinGroup().position.clone() });
+    showToast('ETERNAL RECURRENCE', 1500);
   } else if (sel === 'rush' && isRushCharged() && !effects.rush) {
     consumeRushCharge();
     activateRush();
+    emitParticles({ ...RUSH_ACTIVATE_PARTICLES, position: getPenguinGroup().position.clone() });
+    showToast('\u00dcBERMENSCH RUSH!', 1500);
   }
 }
 
@@ -211,11 +218,21 @@ function startGame() {
   cleanupCombo();
   initCombo({ onTierUp: flashComboTierUp });
   initPowerups({
-    onShieldBreak: () => { /* will add particles in Task 4 */ },
+    onShieldBreak: () => {
+      hideShieldVisual();
+      emitParticles({ ...SHIELD_SHATTER_PARTICLES, position: getPenguinGroup().position.clone() });
+      showToast('SHIELD SHATTERED', 1000);
+    },
     onDiscoStart: () => { /* will add disco visuals in Task 5 */ },
     onDiscoEnd: () => { /* will add disco cleanup in Task 5 */ },
-    onEffectStart: (key) => { /* will add visuals per power-up in Task 4 */ },
-    onEffectEnd: (key) => { /* will add cleanup per power-up in Task 4 */ },
+    onEffectStart: (key) => {
+      if (key === 'slowTime') showSlowTimeFilter();
+      if (key === 'shield') showShieldVisual();
+    },
+    onEffectEnd: (key) => {
+      if (key === 'slowTime') hideSlowTimeFilter();
+      if (key === 'shield') hideShieldVisual();
+    },
   });
   lastDamageDistanceForCombo = 0;
   clearParticles();
@@ -470,8 +487,27 @@ function gameLoop(now) {
             dreadsSurvivedThisRun++;
           });
           showMultiplier(true);
+        } else if (pickup.type === 'shield') {
+          activateShield();
+          showShieldVisual();
+          emitParticles({ ...SHIELD_SHATTER_PARTICLES, position: penguinForPickup.position.clone() });
+          showToast('ETERNAL SHIELD', 1500);
+        } else if (pickup.type === 'magnet') {
+          activateMagnet();
+          emitParticles({ ...MAGNET_VORTEX_PARTICLES, position: penguinForPickup.position.clone() });
+          showToast('FISH MAGNET', 1500);
         }
       }
+    }
+
+    // Magnet pull — attract fish from adjacent lanes
+    if (isMagnetActive()) {
+      applyMagnetPull(getCurrentLane(), delta);
+    }
+
+    // Shield visual rotation
+    if (isShieldActive()) {
+      updateShieldVisual(delta);
     }
   }
 
