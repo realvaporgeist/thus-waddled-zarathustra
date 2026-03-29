@@ -38,7 +38,7 @@ let score = 0;
 let distance = 0;
 let hearts = 3;
 let fishCount = 0;
-let newAchievements = []; // populated in Task 11
+let newAchievements = [];
 let dreadsSurvivedThisRun = 0;
 
 // ---------------------------------------------------------------------------
@@ -108,6 +108,7 @@ function startGame() {
 function gameOver() {
   gameState = 'gameover';
   playGameOver();
+  cleanupDread();
   showHUD(false);
 
   // Achievement checking
