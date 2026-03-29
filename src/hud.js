@@ -36,6 +36,13 @@ export function createHUD(onPause) {
   toastEl.className = 'hidden';
   document.getElementById('ui-overlay').appendChild(toastEl);
 
+  // Dread timer bar
+  const dreadBar = document.createElement('div');
+  dreadBar.id = 'dread-timer-bar';
+  dreadBar.className = 'hidden';
+  dreadBar.innerHTML = '<div id="dread-timer-fill"></div>';
+  document.getElementById('ui-overlay').appendChild(dreadBar);
+
   heartsEl = document.getElementById('hud-hearts');
   scoreEl = document.getElementById('hud-score');
   fishEl = document.getElementById('hud-fish');
@@ -79,9 +86,53 @@ export function showToast(text, duration = 2000) {
   if (!toastEl) return;
   toastEl.textContent = text;
   toastEl.classList.remove('hidden');
-  toastEl.classList.remove('toast-fade');
-  void toastEl.offsetWidth; // reflow
-  toastEl.classList.add('toast-fade');
+  toastEl.classList.remove('toast-slide-in');
+  toastEl.classList.remove('toast-slide-out');
+  void toastEl.offsetWidth;
+  toastEl.classList.add('toast-slide-in');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastEl.classList.add('hidden'), duration);
+  toastTimer = setTimeout(() => {
+    toastEl.classList.remove('toast-slide-in');
+    toastEl.classList.add('toast-slide-out');
+    setTimeout(() => {
+      toastEl.classList.add('hidden');
+      toastEl.classList.remove('toast-slide-out');
+    }, 300);
+  }, duration);
+}
+
+export function bounceScore() {
+  if (!scoreEl) return;
+  scoreEl.classList.remove('score-bounce');
+  void scoreEl.offsetWidth;
+  scoreEl.classList.add('score-bounce');
+}
+
+export function shakeHeart(index) {
+  if (!heartsEl) return;
+  const hearts = heartsEl.querySelectorAll('.heart');
+  if (hearts[index]) {
+    hearts[index].classList.add('heart-shake');
+    setTimeout(() => hearts[index].classList.remove('heart-shake'), 300);
+  }
+}
+
+export function pulseLastHeart() {
+  if (!heartsEl) return;
+  const hearts = heartsEl.querySelectorAll('.heart');
+  for (const h of hearts) {
+    h.classList.remove('heart-pulse');
+  }
+  const visibleHearts = [...hearts].filter(h => h.textContent === '\u2764\uFE0F');
+  if (visibleHearts.length === 1) {
+    visibleHearts[0].classList.add('heart-pulse');
+  }
+}
+
+export function updateDreadTimerBar(progress, visible) {
+  const bar = document.getElementById('dread-timer-bar');
+  const fill = document.getElementById('dread-timer-fill');
+  if (!bar || !fill) return;
+  bar.classList.toggle('hidden', !visible);
+  fill.style.width = `${progress * 100}%`;
 }

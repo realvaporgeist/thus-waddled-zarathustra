@@ -12,6 +12,7 @@ import {
   DREAD_FOG_COLOR,
   DREAD_FOG_NEAR,
   DREAD_FOG_FAR,
+  SCREEN_SHAKE_DURATION,
 } from './constants.js';
 
 let scene, camera, renderer;
@@ -20,6 +21,12 @@ const normalSky = new THREE.Color(SKY_COLOR);
 const dreadSky = new THREE.Color(DREAD_SKY_COLOR);
 const normalFog = new THREE.Color(FOG_COLOR);
 const dreadFogColor = new THREE.Color(DREAD_FOG_COLOR);
+
+// Screen shake
+let shakeTimer = 0;
+let shakeIntensity = 0;
+let shakeOffsetX = 0;
+let shakeOffsetY = 0;
 
 export function initScene(canvas) {
   scene = new THREE.Scene();
@@ -82,4 +89,43 @@ export function transitionToDread(t) {
   scene.fog.color.lerpColors(normalFog, dreadFogColor, t);
   scene.fog.near = THREE.MathUtils.lerp(NORMAL_FOG_NEAR, DREAD_FOG_NEAR, t);
   scene.fog.far = THREE.MathUtils.lerp(NORMAL_FOG_FAR, DREAD_FOG_FAR, t);
+}
+
+export function triggerScreenShake(intensity) {
+  shakeTimer = SCREEN_SHAKE_DURATION;
+  shakeIntensity = intensity;
+}
+
+export function updateScreenEffects(delta) {
+  if (shakeTimer > 0) {
+    shakeTimer -= delta;
+    const t = shakeTimer / SCREEN_SHAKE_DURATION;
+    shakeOffsetX = (Math.random() - 0.5) * 2 * shakeIntensity * t;
+    shakeOffsetY = (Math.random() - 0.5) * 2 * shakeIntensity * t;
+  } else {
+    shakeOffsetX = 0;
+    shakeOffsetY = 0;
+  }
+}
+
+export function getShakeOffset() {
+  return { x: shakeOffsetX, y: shakeOffsetY };
+}
+
+export function showRedVignette() {
+  const vignette = document.getElementById('damage-vignette');
+  if (!vignette) return;
+  vignette.classList.remove('hidden');
+  vignette.classList.remove('vignette-flash');
+  void vignette.offsetWidth;
+  vignette.classList.add('vignette-flash');
+  setTimeout(() => vignette.classList.add('hidden'), 200);
+}
+
+export function setSpeedLinesVisible(visible) {
+  const el = document.getElementById('speed-lines');
+  if (el) {
+    el.classList.toggle('hidden', !visible);
+    el.classList.toggle('active', visible);
+  }
 }
