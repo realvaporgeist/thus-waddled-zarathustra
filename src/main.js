@@ -134,6 +134,10 @@ const splash = document.getElementById('splash-screen');
 const dismissSplash = () => {
   splash.classList.add('fade-out');
   splash.addEventListener('animationend', () => splash.remove());
+  // Restart the intro camera so the pan plays after the splash fades
+  cameraState = 'intro';
+  cameraTimer = 0;
+  introSkipped = false;
   initAudio();
   window.removeEventListener('keydown', dismissSplash);
 };
