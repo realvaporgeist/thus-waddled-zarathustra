@@ -131,7 +131,9 @@ setIdleMode(true);
 
 // Splash screen — dismiss on click/key/tap, then start audio (user gesture unlocks AudioContext)
 const splash = document.getElementById('splash-screen');
-const dismissSplash = () => {
+const dismissSplash = (e) => {
+  // Prevent this same event from reaching handleIntroSkip and skipping the intro
+  e.stopImmediatePropagation();
   splash.classList.add('fade-out');
   splash.addEventListener('animationend', () => splash.remove());
   // Restart the intro camera so the pan plays after the splash fades
