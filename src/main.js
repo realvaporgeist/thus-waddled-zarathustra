@@ -4,11 +4,12 @@ import { createTerrain, updateTerrain } from './terrain.js';
 import {
   createPenguin, updatePenguin, switchLane, jump, slide,
   getPenguinGroup, isPlayerJumping, isPlayerSliding, isInvincible,
-  startInvincibility,
+  startInvincibility, getCurrentLane,
 } from './penguin.js';
 import { initControls } from './controls.js';
 import { spawnObstacle, updateObstacles, getActiveObstacles } from './obstacles.js';
 import { checkCollision } from './collision.js';
+import { spawnCollectibles, updateCollectibles, checkCollectiblePickup } from './collectibles.js';
 import {
   CAMERA_OFFSET, CAMERA_LOOK_AHEAD, BASE_SPEED, SPEED_INCREMENT,
   MAX_SPEED, INVINCIBILITY_DURATION,
@@ -61,6 +62,18 @@ function gameLoop(now) {
         startInvincibility(INVINCIBILITY_DURATION);
         break;
       }
+    }
+  }
+
+  // Collectible spawning & movement
+  spawnCollectibles(scene, playerZ, elapsed);
+  updateCollectibles(delta, speed);
+
+  const penguinForPickup = getPenguinGroup();
+  if (penguinForPickup) {
+    const pickups = checkCollectiblePickup(penguinForPickup.position, getCurrentLane());
+    for (const pickup of pickups) {
+      console.log('Collected:', pickup.type, pickup.quoteText || '');
     }
   }
 
