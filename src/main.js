@@ -129,7 +129,16 @@ initWeather(scene);
 setWeather('clearAurora');
 setIdleMode(true);
 
-initAudio();
+// Splash screen — dismiss on click/key/tap, then start audio (user gesture unlocks AudioContext)
+const splash = document.getElementById('splash-screen');
+const dismissSplash = () => {
+  splash.classList.add('fade-out');
+  splash.addEventListener('animationend', () => splash.remove());
+  initAudio();
+  window.removeEventListener('keydown', dismissSplash);
+};
+splash.addEventListener('click', dismissSplash, { once: true });
+window.addEventListener('keydown', dismissSplash, { once: true });
 
 // Apply saved skin on load
 applySkin(getSelectedSkin());

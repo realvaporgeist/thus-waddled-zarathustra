@@ -233,22 +233,13 @@ export function resumeMusic() {
   currentGainNode.gain.linearRampToValueAtTime(MUSIC_VOLUME, t + CROSSFADE_DURATION);
 }
 
-export function initAudio() {
-  // Prefetch raw MP3 bytes immediately — no AudioContext, no browser warnings
-  prefetchMusic();
+// Start fetching MP3 bytes immediately on module load (no AudioContext needed)
+prefetchMusic();
 
-  // On first user gesture: create AudioContext, decode menu track, play it.
-  // MP3 bytes are already fetched so decode + play is near-instant.
-  const handleGesture = () => {
-    window.removeEventListener('click', handleGesture);
-    window.removeEventListener('keydown', handleGesture);
-    window.removeEventListener('touchstart', handleGesture);
-    playTrack('menu').then(() => {
-      // Decode remaining tracks in background so they're ready for gameplay
-      Object.keys(TRACK_URLS).forEach((name) => ensureDecoded(name));
-    });
-  };
-  window.addEventListener('click', handleGesture);
-  window.addEventListener('keydown', handleGesture);
-  window.addEventListener('touchstart', handleGesture);
+export function initAudio() {
+  // Called from a user gesture (splash screen dismiss) so AudioContext is allowed.
+  // MP3 bytes are already fetched — decode menu track and play, then decode the rest.
+  playTrack('menu').then(() => {
+    Object.keys(TRACK_URLS).forEach((name) => ensureDecoded(name));
+  });
 }
