@@ -15,10 +15,12 @@ import {
   createStartScreen, hideStartScreen, showStartScreen,
   showGameOverScreen, hideGameOverScreen,
 } from './screens.js';
+import { startDread, updateDread, isDreadActive, getDreadSpeedMultiplier, cleanupDread } from './dread.js';
 import {
   CAMERA_OFFSET, CAMERA_LOOK_AHEAD, BASE_SPEED, SPEED_INCREMENT,
   MAX_SPEED, INVINCIBILITY_DURATION, POINTS_PER_METER, FISH_POINTS,
-  GOLDEN_FISH_POINTS, FISH_PER_HEAL, MAX_HEARTS,
+  GOLDEN_FISH_POINTS, FISH_PER_HEAL, MAX_HEARTS, DREAD_MULTIPLIER,
+  DREAD_DAMAGE_MULTIPLIER,
 } from './constants.js';
 
 // ---------------------------------------------------------------------------
@@ -35,6 +37,7 @@ let distance = 0;
 let hearts = 3;
 let fishCount = 0;
 let newAchievements = []; // populated in Task 11
+let dreadsSurvivedThisRun = 0;
 
 // ---------------------------------------------------------------------------
 // Scene setup (runs once)
@@ -78,6 +81,10 @@ function startGame() {
   hearts = 3;
   fishCount = 0;
   newAchievements = [];
+  dreadsSurvivedThisRun = 0;
+
+  // Clean up any active dread mode
+  cleanupDread();
 
   // Reset entities
   resetPenguin();
@@ -123,27 +130,35 @@ function gameLoop(now) {
     // Speed ramp-up over time
     elapsed += delta;
     speed = Math.min(BASE_SPEED + Math.floor(elapsed / 10) * SPEED_INCREMENT, MAX_SPEED);
-    playerZ -= speed * delta;
 
-    // Track distance and score separately
-    distance += speed * delta;
-    score += speed * delta * POINTS_PER_METER;
+    // Apply dread speed multiplier
+    const dreadMultiplier = getDreadSpeedMultiplier();
+    const currentSpeed = speed * dreadMultiplier;
+
+    playerZ -= currentSpeed * delta;
+
+    // Track distance and score separately (with dread score multiplier)
+    distance += currentSpeed * delta;
+    const scoreMultiplier = isDreadActive() ? DREAD_MULTIPLIER : 1;
+    score += currentSpeed * delta * POINTS_PER_METER * scoreMultiplier;
     updateScore(score);
 
     updatePenguin(delta);
     updateTerrain(playerZ);
+    updateDread(delta);
 
     // Obstacle spawning & movement
     const difficulty = Math.floor(elapsed / 10);
     spawnObstacle(scene, playerZ, difficulty);
-    updateObstacles(delta, playerZ, speed);
+    updateObstacles(delta, playerZ, currentSpeed);
 
     // Collision detection
     const penguin = getPenguinGroup();
     if (penguin && !isInvincible()) {
       for (const obs of getActiveObstacles()) {
         if (checkCollision(penguin.position, isPlayerSliding(), isPlayerJumping(), obs)) {
-          hearts--;
+          const damage = isDreadActive() ? DREAD_DAMAGE_MULTIPLIER : 1;
+          hearts -= damage;
           updateHearts(hearts);
           if (hearts <= 0) {
             gameOver();
@@ -157,7 +172,7 @@ function gameLoop(now) {
 
     // Collectible spawning & movement
     spawnCollectibles(scene, playerZ, elapsed);
-    updateCollectibles(delta, speed);
+    updateCollectibles(delta, currentSpeed);
 
     const penguinForPickup = getPenguinGroup();
     if (penguinForPickup) {
@@ -165,16 +180,22 @@ function gameLoop(now) {
       for (const pickup of pickups) {
         if (pickup.type === 'fish') {
           fishCount++;
-          score += FISH_POINTS;
+          score += FISH_POINTS * scoreMultiplier;
           updateFishCount(fishCount);
           if (fishCount % FISH_PER_HEAL === 0 && hearts < MAX_HEARTS) {
             hearts++;
             updateHearts(hearts);
           }
         } else if (pickup.type === 'goldenFish') {
-          score += GOLDEN_FISH_POINTS;
+          score += GOLDEN_FISH_POINTS * scoreMultiplier;
           fishCount++;
           updateFishCount(fishCount);
+        } else if (pickup.type === 'abyssOrb' && !isDreadActive()) {
+          startDread(scene, () => {
+            showMultiplier(false);
+            dreadsSurvivedThisRun++;
+          });
+          showMultiplier(true);
         }
       }
     }
