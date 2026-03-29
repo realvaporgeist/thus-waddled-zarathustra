@@ -2,6 +2,8 @@ import {
   COMBO_TIERS,
   COMBO_DRAIN_BASE,
   COMBO_DRAIN_MULTIPLIERS,
+  SLOW_TIME_CHARGE_TIER,
+  RUSH_CHARGE_TIER,
 } from './constants.js';
 
 let meter = 0; // 0–1
@@ -38,8 +40,8 @@ export function fillCombo(amount) {
   if (tierIdx > lastTier) {
     lastTier = tierIdx;
     if (onTierUp) onTierUp(COMBO_TIERS[tierIdx]);
-    if (tierIdx >= 2 && !slowTimeCharged) slowTimeCharged = true;
-    if (tierIdx >= 4 && !rushCharged) rushCharged = true;
+    if (tierIdx >= SLOW_TIME_CHARGE_TIER && !slowTimeCharged) slowTimeCharged = true;
+    if (tierIdx >= RUSH_CHARGE_TIER && !rushCharged) rushCharged = true;
   }
 }
 

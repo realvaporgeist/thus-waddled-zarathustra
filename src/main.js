@@ -447,7 +447,7 @@ function gameLoop(now) {
     }
 
     // Boss encounter updates
-    updateBosses(delta, distance, playerZ);
+    updateBosses(delta, distance);
     if (isBossActive()) {
       const boss = getCurrentBoss();
       const progress = getBossTimer() / boss.duration;

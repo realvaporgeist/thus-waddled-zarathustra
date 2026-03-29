@@ -24,6 +24,19 @@ let bossScene = null;
 let onTitanStomp = null;
 
 // ---------------------------------------------------------------------------
+// Three.js resource cleanup helper
+// ---------------------------------------------------------------------------
+function disposeMeshRecursive(obj) {
+  obj.traverse(child => {
+    if (child.geometry) child.geometry.dispose();
+    if (child.material) {
+      if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+      else child.material.dispose();
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Boss 1: The Last Man (gauntlet)
 // Visual: hunched gray figure in background
 // Pattern: ice block waves every 0.8s with shifting open lane
@@ -31,7 +44,7 @@ let onTitanStomp = null;
 let lastManTimer = 0;
 let lastManMesh = null;
 
-function spawnLastManVisuals(scene, playerZ) {
+function spawnLastManVisuals(scene) {
   lastManTimer = 0;
   const group = new THREE.Group();
   const bodyGeo = new THREE.CylinderGeometry(0.8, 1.2, 3, 8);
@@ -43,47 +56,39 @@ function spawnLastManVisuals(scene, playerZ) {
   const head = new THREE.Mesh(headGeo, bodyMat);
   head.position.y = 3.3;
   group.add(head);
-  group.position.set(0, TERRAIN_Y, playerZ - 120);
+  // Screen-space: penguin at z=0, negative z = ahead
+  group.position.set(0, TERRAIN_Y, -120);
   scene.add(group);
   lastManMesh = group;
-}
-
-function disposeMeshRecursive(obj) {
-  obj.traverse(child => {
-    if (child.geometry) child.geometry.dispose();
-    if (child.material) {
-      if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
-      else child.material.dispose();
-    }
-  });
 }
 
 function cleanupLastManVisuals(scene) {
   if (lastManMesh) { scene.remove(lastManMesh); disposeMeshRecursive(lastManMesh); lastManMesh = null; }
 }
 
-function updateLastMan(delta, playerZ) {
+function updateLastMan(delta) {
   lastManTimer += delta;
   if (lastManTimer >= 0.8) {
     lastManTimer -= 0.8;
     const openLane = Math.floor((performance.now() / 800) % 3);
     for (let lane = 0; lane < 3; lane++) {
       if (lane === openLane) continue;
-      spawnBossObstacle(bossScene, playerZ - 60, lane, 'iceBlock');
+      // Screen-space: spawn 60 units ahead of the player
+      spawnBossObstacle(bossScene, -60, lane, 'iceBlock');
     }
   }
 }
 
 // ---------------------------------------------------------------------------
 // Boss 2: The Abyss Serpent (chase)
-// Visual: massive dark shape with red eyes, chasing from behind
+// Visual: massive dark shape with red eyes, looming ahead
 // Pattern: serpent gains on player; hits make it lurch closer; 3 hits = game over
 // ---------------------------------------------------------------------------
 let serpentMesh = null;
 let serpentDistance = 30;
 let serpentHits = 0;
 
-function spawnSerpentVisuals(scene, _playerZ) {
+function spawnSerpentVisuals(scene) {
   serpentDistance = 30;
   serpentHits = 0;
   const group = new THREE.Group();
@@ -106,10 +111,11 @@ function spawnSerpentVisuals(scene, _playerZ) {
   serpentMesh = group;
 }
 
-function updateSerpent(delta, playerZ) {
+function updateSerpent(delta) {
   if (!serpentMesh) return;
   serpentDistance -= delta * 0.8;
-  serpentMesh.position.set(0, TERRAIN_Y + 2, playerZ + serpentDistance);
+  // Screen-space: negative z = ahead, serpent looms and closes in
+  serpentMesh.position.set(0, TERRAIN_Y + 2, -serpentDistance);
   serpentMesh.children[1].material.emissiveIntensity = 0.6 + Math.sin(performance.now() * 0.005) * 0.4;
   serpentMesh.children[2].material.emissiveIntensity = 0.6 + Math.sin(performance.now() * 0.005) * 0.4;
 }
@@ -133,7 +139,7 @@ let paleCriminalTimer = 0;
 let paleCriminalLane = 0;
 let paleCriminalSpawnTimer = 0;
 
-function updatePaleCriminal(delta, playerZ) {
+function updatePaleCriminal(delta) {
   paleCriminalTimer += delta;
   paleCriminalSpawnTimer += delta;
   if (paleCriminalTimer >= 4) {
@@ -144,7 +150,7 @@ function updatePaleCriminal(delta, playerZ) {
     paleCriminalSpawnTimer -= 2;
     for (let lane = 0; lane < 3; lane++) {
       if (lane === paleCriminalLane) continue;
-      spawnBossObstacle(bossScene, playerZ - 50, lane, 'crevasse');
+      spawnBossObstacle(bossScene, -50, lane, 'crevasse');
     }
   }
 }
@@ -164,7 +170,7 @@ let titanMesh = null;
 let titanStompTimer = 0;
 let titanSpikeTimer = 0;
 
-function spawnTitanVisuals(scene, playerZ) {
+function spawnTitanVisuals(scene) {
   titanStompTimer = 0;
   titanSpikeTimer = 0;
   const group = new THREE.Group();
@@ -180,7 +186,8 @@ function spawnTitanVisuals(scene, playerZ) {
   const head = new THREE.Mesh(headGeo, bodyMat);
   head.position.y = 12;
   group.add(head);
-  group.position.set(0, TERRAIN_Y, playerZ - 100);
+  // Screen-space: visible in the distance ahead
+  group.position.set(0, TERRAIN_Y, -100);
   scene.add(group);
   titanMesh = group;
 }
@@ -189,20 +196,21 @@ function cleanupTitanVisuals(scene) {
   if (titanMesh) { scene.remove(titanMesh); disposeMeshRecursive(titanMesh); titanMesh = null; }
 }
 
-function updateIceTitan(delta, playerZ) {
+function updateIceTitan(delta) {
   titanStompTimer += delta;
   titanSpikeTimer += delta;
   if (titanStompTimer >= TITAN_STOMP_INTERVAL) {
     titanStompTimer -= TITAN_STOMP_INTERVAL;
+    // Stomp crevasses spawn close — 15 units ahead
     for (let lane = 0; lane < 3; lane++) {
-      spawnBossObstacle(bossScene, playerZ - 15, lane, 'crevasse');
+      spawnBossObstacle(bossScene, -15, lane, 'crevasse');
     }
     if (onTitanStomp) onTitanStomp();
   }
   if (titanSpikeTimer >= 1.0) {
     titanSpikeTimer -= 1.0;
     const lane = Math.floor(Math.random() * 3);
-    spawnBossObstacle(bossScene, playerZ - 60, lane, 'iceSpike');
+    spawnBossObstacle(bossScene, -60, lane, 'iceSpike');
   }
 }
 
@@ -225,14 +233,14 @@ function startEternalReturn() {
   eternalReturnStarted = true;
 }
 
-function updateEternalReturn(delta, playerZ) {
+function updateEternalReturn(delta) {
   if (!eternalReturnStarted) {
     startEternalReturn();
   }
   eternalReturnTimer += delta;
   while (eternalReturnQueue.length > 0 && eternalReturnTimer >= eternalReturnQueue[0].delay) {
     const item = eternalReturnQueue.shift();
-    spawnBossObstacle(bossScene, playerZ - 60, item.lane, item.typeName);
+    spawnBossObstacle(bossScene, -60, item.lane, item.typeName);
   }
 }
 
@@ -308,11 +316,11 @@ export function initBosses(scene, callbacks = {}) {
   onTitanStomp = callbacks.onTitanStomp || null;
 }
 
-export function updateBosses(delta, distance, playerZ) {
+export function updateBosses(delta, distance) {
   switch (bossState) {
     case 'idle':
       if (distance >= nextBossDistance) {
-        startBossEncounter(distance, playerZ);
+        startBossEncounter(distance);
       }
       break;
 
@@ -328,7 +336,7 @@ export function updateBosses(delta, distance, playerZ) {
 
     case 'active':
       bossTimer -= delta;
-      if (currentBoss.updateFn) currentBoss.updateFn(delta, playerZ);
+      if (currentBoss.updateFn) currentBoss.updateFn(delta);
       if (bossTimer <= 0) {
         bossState = 'defeat';
         bossTimer = BOSS_DEFEAT_DURATION;
@@ -346,7 +354,7 @@ export function updateBosses(delta, distance, playerZ) {
   }
 }
 
-function startBossEncounter(distance, playerZ) {
+function startBossEncounter(distance) {
   const nextType = lastBossType === 'gauntlet' ? 'chase' : 'gauntlet';
   const pool = nextType === 'gauntlet' ? GAUNTLET_BOSSES : CHASE_BOSSES;
   const available = pool.filter(b => distance >= b.unlockDist);
@@ -364,8 +372,8 @@ function startBossEncounter(distance, playerZ) {
   bossState = 'warning';
   bossTimer = BOSS_WARNING_DURATION;
 
-  // Spawn boss visuals (pass playerZ so meshes are positioned relative to the player)
-  if (currentBoss.spawnVisuals) currentBoss.spawnVisuals(bossScene, playerZ);
+  // Spawn boss visuals (screen-space — no playerZ needed)
+  if (currentBoss.spawnVisuals) currentBoss.spawnVisuals(bossScene);
 
   // Reset boss-specific timers for bosses without spawnVisuals
   if (currentBoss.id === 'paleCriminal') resetPaleCriminal();
