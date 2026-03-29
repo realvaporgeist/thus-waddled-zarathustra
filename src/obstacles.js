@@ -18,6 +18,8 @@ import {
   MAX_COMPLEX_OBSTACLES,
 } from './constants.js';
 
+import { spawnFishAt } from './collectibles.js';
+
 const activeObstacles = [];
 let nextSpawnZ = -20;
 
@@ -294,6 +296,15 @@ function spawnPhilosopherFog(scene, worldZ, lane) {
   mesh.position.set(LANE_POSITIONS[lane], TERRAIN_Y, worldZ);
   scene.add(mesh);
   activeObstacles.push({ mesh, height: 2.5, type: 'ground', typeName: 'philosopherFog', lane });
+
+  // Roll contents: 50% fish, 30% obstacle, 20% empty
+  const roll = Math.random();
+  if (roll < 0.5) {
+    spawnFishAt(scene, worldZ - PHILOSOPHER_FOG_DEPTH * 0.3, lane);
+  } else if (roll < 0.8) {
+    spawnObstacleAt(scene, worldZ - PHILOSOPHER_FOG_DEPTH * 0.3, lane, 'iceBlock');
+  }
+  // else: empty
 }
 
 // ---------------------------------------------------------------------------

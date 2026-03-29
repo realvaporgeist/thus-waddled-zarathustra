@@ -24,6 +24,14 @@ export function checkCollision(penguinPos, penguinSliding, penguinJumping, obsta
     return dz < 1.0;
   }
 
+  // --- Ice spike: slide-only counter (too tall to jump over) ---
+  if (obstacle.typeName === 'iceSpike') {
+    if (penguinSliding) return false;
+    const dz = Math.abs(penguinPos.z - obstacle.mesh.position.z);
+    const dx = Math.abs(penguinPos.x - obstacle.mesh.position.x);
+    return dz < 1.0 && dx < LANE_WIDTH * 0.45;
+  }
+
   // --- Crevasse: only hits grounded players ---
   if (obstacle.typeName === 'crevasse') {
     if (penguinJumping) return false;
