@@ -6,6 +6,9 @@ import {
   SNOW_AREA_WIDTH, SNOW_AREA_HEIGHT, SNOW_AREA_DEPTH,
   BLIZZARD_WIND_DRIFT, WEATHER_FOG,
   SKY_COLOR, FOG_COLOR, NORMAL_FOG_NEAR, NORMAL_FOG_FAR,
+  BLIZZARD_DRIFT_SPEED, BLIZZARD_DRIFT_CHANGE_MIN, BLIZZARD_DRIFT_CHANGE_MAX,
+  BLIZZARD_ICE_SPIKE_SPEED_BONUS, FOG_DRAW_DISTANCE_MULT,
+  CLEAR_FISH_SPAWN_BONUS, CLEAR_GOLDEN_FISH_MULT, CLEAR_SCORE_BONUS,
 } from './constants.js';
 import { setAuroraOpacity } from './aurora.js';
 
@@ -24,6 +27,17 @@ let crossfading = false;
 
 let dreadOverride = false;
 let savedWeather = null;
+
+// Weather gameplay state
+let driftDirection = 0;
+let driftChangeTimer = 0;
+
+const WEATHER_MODIFIERS = {
+  lightSnow: { drift: 0, drawDistanceMult: 1, fishSpawnBonus: 0, goldenFishMult: 1, scoreBonus: 0, iceSpikeSpeedBonus: 0 },
+  blizzard: { drift: BLIZZARD_DRIFT_SPEED, drawDistanceMult: 1, fishSpawnBonus: 0, goldenFishMult: 1, scoreBonus: 0, iceSpikeSpeedBonus: BLIZZARD_ICE_SPIKE_SPEED_BONUS },
+  clearAurora: { drift: 0, drawDistanceMult: 1, fishSpawnBonus: CLEAR_FISH_SPAWN_BONUS, goldenFishMult: CLEAR_GOLDEN_FISH_MULT, scoreBonus: CLEAR_SCORE_BONUS, iceSpikeSpeedBonus: 0 },
+  fog: { drift: 0, drawDistanceMult: FOG_DRAW_DISTANCE_MULT, fishSpawnBonus: 0, goldenFishMult: 1, scoreBonus: 0, iceSpikeSpeedBonus: 0 },
+};
 
 let currentSky = new THREE.Color(SKY_COLOR);
 let currentFog = new THREE.Color(FOG_COLOR);
@@ -202,5 +216,31 @@ export function cleanupWeather() {
     snowPoints.geometry.dispose();
     snowPoints.material.dispose();
     snowPoints = null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Weather gameplay modifiers
+// ---------------------------------------------------------------------------
+export function getWeatherModifiers() {
+  const weather = getCurrentWeather();
+  const mods = { ...WEATHER_MODIFIERS[weather] || WEATHER_MODIFIERS.lightSnow };
+  if (mods.drift > 0) {
+    mods.driftDirection = driftDirection;
+  } else {
+    mods.driftDirection = 0;
+  }
+  return mods;
+}
+
+export function updateWeatherGameplay(delta) {
+  const weather = getCurrentWeather();
+  if (weather === 'blizzard') {
+    driftChangeTimer -= delta;
+    if (driftChangeTimer <= 0) {
+      driftDirection = Math.random() < 0.5 ? -1 : 1;
+      driftChangeTimer = BLIZZARD_DRIFT_CHANGE_MIN +
+        Math.random() * (BLIZZARD_DRIFT_CHANGE_MAX - BLIZZARD_DRIFT_CHANGE_MIN);
+    }
   }
 }

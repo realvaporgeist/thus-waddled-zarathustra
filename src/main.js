@@ -8,9 +8,9 @@ import {
   startInvincibility, getCurrentLane, resetPenguin, applySkin,
 } from './penguin.js';
 import { initControls } from './controls.js';
-import { spawnObstacle, updateObstacles, getActiveObstacles, clearObstacles } from './obstacles.js';
+import { spawnObstacle, updateObstacles, getActiveObstacles, clearObstacles, setObstacleDrawDistance } from './obstacles.js';
 import { checkCollision } from './collision.js';
-import { spawnCollectibles, updateCollectibles, checkCollectiblePickup, clearCollectibles, applyMagnetPull, autoCollectAllFish } from './collectibles.js';
+import { spawnCollectibles, updateCollectibles, checkCollectiblePickup, clearCollectibles, applyMagnetPull, autoCollectAllFish, setWeatherCollectibleModifiers } from './collectibles.js';
 import { createHUD, updateScore, updateHearts, updateFishCount, showHUD, showMultiplier, showToast } from './hud.js';
 import {
   createStartScreen, hideStartScreen, showStartScreen,
@@ -38,11 +38,12 @@ import {
 } from './powerups.js';
 import { initParticles, updateParticles, emitParticles, clearParticles } from './particles.js';
 import { initAurora, updateAurora } from './aurora.js';
-import { initWeather, updateWeather, setWeather, getCurrentWeather } from './weather.js';
+import { initWeather, updateWeather, setWeather, getCurrentWeather, getWeatherModifiers, updateWeatherGameplay } from './weather.js';
 import { swayMountains } from './terrain.js';
 import {
   setIdleMode, updateIdleAnimation, triggerKnockback,
   showShieldVisual, hideShieldVisual, updateShieldVisual,
+  applyDrift,
 } from './penguin.js';
 import {
   triggerScreenShake, updateScreenEffects, getShakeOffset,
@@ -91,6 +92,7 @@ let lastDamageDistance = 0; // distance at last damage
 let longestNoDamage = 0;
 let lastDamageDistanceForCombo = 0;
 let discoTriggeredThisRun = false;
+let weatherScoreBonus = 1;
 
 // Camera state machine
 let cameraState = 'intro'; // 'intro' | 'idle' | 'transitioning' | 'gameplay'
@@ -368,7 +370,7 @@ function gameLoop(now) {
     const comboMult = getComboMultiplier();
     const dreadScoreMult = isDreadActive() ? DREAD_MULTIPLIER : 1;
     const powerupScoreMult = getScoreMultiplier();
-    score += currentSpeed * delta * POINTS_PER_METER * comboMult * dreadScoreMult * powerupScoreMult;
+    score += currentSpeed * delta * POINTS_PER_METER * comboMult * dreadScoreMult * powerupScoreMult * weatherScoreBonus;
     updateScore(score);
 
     updatePenguin(delta, currentSpeed);
@@ -571,6 +573,22 @@ function gameLoop(now) {
   // Weather updates only during gameplay
   if (gameState === 'playing') {
     updateWeather(delta);
+
+    // Weather gameplay effects (disabled during dread mode)
+    if (!isDreadActive()) {
+      updateWeatherGameplay(delta);
+      const weatherMods = getWeatherModifiers();
+      if (weatherMods.drift > 0 && weatherMods.driftDirection !== 0) {
+        applyDrift(weatherMods.driftDirection * weatherMods.drift * delta);
+      }
+      setObstacleDrawDistance(weatherMods.drawDistanceMult);
+      setWeatherCollectibleModifiers(weatherMods.fishSpawnBonus, weatherMods.goldenFishMult);
+      weatherScoreBonus = 1 + weatherMods.scoreBonus;
+    } else {
+      setObstacleDrawDistance(1);
+      setWeatherCollectibleModifiers(0, 1);
+      weatherScoreBonus = 1;
+    }
   }
 
   // Camera positioning

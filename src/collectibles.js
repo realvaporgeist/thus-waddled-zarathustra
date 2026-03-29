@@ -36,6 +36,17 @@ let shieldCooldownTimer = 0;
 let magnetCooldownTimer = 0;
 
 // ---------------------------------------------------------------------------
+// Weather collectible modifiers
+// ---------------------------------------------------------------------------
+let fishSpawnBonus = 0;
+let goldenFishMult = 1;
+
+export function setWeatherCollectibleModifiers(bonus, goldMult) {
+  fishSpawnBonus = bonus;
+  goldenFishMult = goldMult;
+}
+
+// ---------------------------------------------------------------------------
 // Shared geometry / material pools
 // ---------------------------------------------------------------------------
 const pool = {
@@ -287,7 +298,7 @@ export function spawnCollectibles(scene, worldZ, elapsed) {
     activeCollectibles.push({ mesh, type: 'quote', lane, collected: false, collectTime: 0 });
     nextSpawnZ = worldZ - 15;
 
-  } else if (roll < 0.02 + QUOTE_SPAWN_CHANCE + GOLDEN_FISH_CHANCE) {
+  } else if (roll < 0.02 + QUOTE_SPAWN_CHANCE + GOLDEN_FISH_CHANCE * goldenFishMult) {
     const lane = getFreeLane(spawnZ);
     if (lane < 0) { nextSpawnZ = worldZ - 5; return; }
     const mesh = createGoldenFishMesh();
@@ -296,7 +307,7 @@ export function spawnCollectibles(scene, worldZ, elapsed) {
     activeCollectibles.push({ mesh, type: 'goldenFish', lane, collected: false, collectTime: 0 });
     nextSpawnZ = worldZ - 12;
 
-  } else if (roll < 0.02 + QUOTE_SPAWN_CHANCE + GOLDEN_FISH_CHANCE + FISH_SPAWN_CHANCE) {
+  } else if (roll < 0.02 + QUOTE_SPAWN_CHANCE + GOLDEN_FISH_CHANCE * goldenFishMult + FISH_SPAWN_CHANCE * (1 + fishSpawnBonus)) {
     const lane = Math.floor(Math.random() * LANE_POSITIONS.length);
     const positions = pickFishPattern(lane, spawnZ);
     for (const pos of positions) {

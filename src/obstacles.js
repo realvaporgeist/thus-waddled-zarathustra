@@ -22,6 +22,11 @@ import { spawnFishAt } from './collectibles.js';
 
 const activeObstacles = [];
 let nextSpawnZ = -20;
+let drawDistanceMult = 1;
+
+export function setObstacleDrawDistance(mult) {
+  drawDistanceMult = mult;
+}
 
 const pool = {
   iceBlockGeo: new THREE.BoxGeometry(1.8, 1.2, 1.2),
@@ -414,6 +419,10 @@ export function updateObstacles(delta, worldZ, speed) {
       const ring = mesh.getObjectByName?.('ring');
       if (ring) ring.rotation.z += delta * 2;
     }
+
+    // Fog draw-distance: hide obstacles beyond visible range
+    const visibleDistance = OBSTACLE_SPAWN_DISTANCE * drawDistanceMult;
+    mesh.visible = (-mesh.position.z) < visibleDistance;
 
     if (mesh.position.z > 5) {
       mesh.parent?.remove(mesh);
