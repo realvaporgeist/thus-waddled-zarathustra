@@ -227,7 +227,7 @@ export function showSkinGallery() {
 
   // Show selected skin initially
   const selectedSkin = SKINS.find(s => s.id === selectedId) || SKINS[0];
-  applyPreviewSkin(previewState.materials, selectedSkin);
+  applyPreviewSkin(previewState.materials, selectedSkin, previewState.penguin);
   previewNameEl.textContent = selectedSkin.name;
 
   // Hover to preview unlocked skins
@@ -235,7 +235,7 @@ export function showSkinGallery() {
     el.addEventListener('mouseenter', () => {
       const skin = SKINS.find(s => s.id === el.dataset.skin);
       if (skin && previewState) {
-        applyPreviewSkin(previewState.materials, skin);
+        applyPreviewSkin(previewState.materials, skin, previewState.penguin);
         previewNameEl.textContent = skin.name;
       }
     });
@@ -244,7 +244,7 @@ export function showSkinGallery() {
   // Reset to selected on mouse leave from the list
   overlay.querySelector('.gallery-section').addEventListener('mouseleave', () => {
     if (previewState) {
-      applyPreviewSkin(previewState.materials, selectedSkin);
+      applyPreviewSkin(previewState.materials, selectedSkin, previewState.penguin);
       previewNameEl.textContent = selectedSkin.name;
     }
   });
@@ -336,7 +336,7 @@ function createPreviewPenguin() {
   return { group, mats };
 }
 
-function applyPreviewSkin(mats, skin) {
+function applyPreviewSkin(mats, skin, group) {
   const c = skin.colors;
   mats.body.color.setHex(c.body);
   mats.belly.color.setHex(c.belly);
@@ -351,6 +351,27 @@ function applyPreviewSkin(mats, skin) {
     m.opacity = skin.transparent ? 0.55 : 1;
     m.metalness = skin.metallic ? 0.7 : 0;
     m.roughness = skin.metallic ? 0.3 : (m === mats.belly ? 0.5 : 0.6);
+  }
+
+  // Disco ball accessory on preview penguin
+  if (group) {
+    const existing = group.getObjectByName('discoBall');
+    if (existing) {
+      group.remove(existing);
+      existing.geometry.dispose();
+      existing.material.dispose();
+    }
+    if (skin.discoBall) {
+      const ballGeo = new THREE.IcosahedronGeometry(0.15, 1);
+      const ballMat = new THREE.MeshStandardMaterial({
+        color: 0xcccccc, metalness: 0.9, roughness: 0.1,
+        emissive: 0xffffff, emissiveIntensity: 0.2,
+      });
+      const ball = new THREE.Mesh(ballGeo, ballMat);
+      ball.position.y = PENGUIN_HEIGHT + 0.4;
+      ball.name = 'discoBall';
+      group.add(ball);
+    }
   }
 }
 

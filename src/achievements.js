@@ -87,6 +87,7 @@ export function getPersistentStats() {
     highestScore: 0,
     longestRun: 0,
     totalAchievements: 0,
+    totalDiscoTriggers: 0,
   });
 }
 
