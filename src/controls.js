@@ -6,6 +6,7 @@ let onRight = null;
 let onJump = null;
 let onSlide = null;
 let onAction = null;
+let onPause = null;
 
 let touchStartX = 0;
 let touchStartY = 0;
@@ -17,6 +18,7 @@ export function initControls(callbacks) {
   onJump = callbacks.onJump;
   onSlide = callbacks.onSlide;
   onAction = callbacks.onAction;
+  onPause = callbacks.onPause;
 
   window.addEventListener('keydown', handleKeyDown);
   window.addEventListener('touchstart', handleTouchStart, { passive: false });
@@ -47,6 +49,10 @@ function handleKeyDown(e) {
       break;
     case 'Enter':
       onAction?.();
+      break;
+    case 'Escape':
+    case 'KeyP':
+      onPause?.();
       break;
   }
 }

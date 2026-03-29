@@ -1,23 +1,29 @@
 // src/main.js
 import { initScene, render, getCamera } from './scene.js';
-import { createTerrain, updateTerrain } from './terrain.js';
+import { createTerrain, updateTerrain, resetTerrain } from './terrain.js';
 import {
   createPenguin, updatePenguin, switchLane, jump, slide,
   getPenguinGroup, isPlayerJumping, isPlayerSliding, isInvincible,
-  startInvincibility, getCurrentLane, resetPenguin,
+  startInvincibility, getCurrentLane, resetPenguin, applySkin,
 } from './penguin.js';
 import { initControls } from './controls.js';
 import { spawnObstacle, updateObstacles, getActiveObstacles, clearObstacles } from './obstacles.js';
 import { checkCollision } from './collision.js';
 import { spawnCollectibles, updateCollectibles, checkCollectiblePickup, clearCollectibles } from './collectibles.js';
-import { createHUD, updateScore, updateHearts, updateFishCount, showHUD, showMultiplier } from './hud.js';
+import { createHUD, updateScore, updateHearts, updateFishCount, showHUD, showMultiplier, showToast } from './hud.js';
 import {
   createStartScreen, hideStartScreen, showStartScreen,
   showGameOverScreen, hideGameOverScreen,
+  showPauseScreen, hidePauseScreen, onSkinChange,
 } from './screens.js';
-import { checkAchievements, incrementPersistentStats, collectQuote } from './achievements.js';
+import { checkAchievements, incrementPersistentStats, collectRandomFragment, getCompletedQuoteCount } from './achievements.js';
 import { startDread, updateDread, isDreadActive, getDreadSpeedMultiplier, cleanupDread } from './dread.js';
-import { initAudio, playJump, playHit, playCollect, playDreadEnter, playDreadExit, playGameOver } from './audio.js';
+import {
+  initAudio, playJump, playHit, playCollect, playGoldenCollect,
+  playQuoteCollect, playDreadEnter, playDreadExit, playGameOver,
+  startMusic, stopMusic,
+} from './audio.js';
+import { getSelectedSkin } from './skins.js';
 import {
   CAMERA_OFFSET, CAMERA_LOOK_AHEAD, BASE_SPEED, SPEED_INCREMENT,
   MAX_SPEED, INVINCIBILITY_DURATION, POINTS_PER_METER, FISH_POINTS,
@@ -28,7 +34,7 @@ import {
 // ---------------------------------------------------------------------------
 // Game state
 // ---------------------------------------------------------------------------
-let gameState = 'menu'; // 'menu' | 'playing' | 'gameover'
+let gameState = 'menu'; // 'menu' | 'playing' | 'paused' | 'gameover'
 
 let playerZ = 0;
 let speed = BASE_SPEED;
@@ -38,8 +44,11 @@ let score = 0;
 let distance = 0;
 let hearts = 3;
 let fishCount = 0;
+let goldenFishCount = 0;
 let newAchievements = [];
 let dreadsSurvivedThisRun = 0;
+let lastDamageDistance = 0; // distance at last damage
+let longestNoDamage = 0;
 
 // ---------------------------------------------------------------------------
 // Scene setup (runs once)
@@ -49,13 +58,40 @@ const { scene } = initScene(canvas);
 
 createTerrain(scene);
 createPenguin(scene);
-createHUD();
+createHUD(() => togglePause());
 
 initAudio();
+
+// Apply saved skin on load
+applySkin(getSelectedSkin());
+
+// When skin changes from gallery, apply it
+onSkinChange(() => {
+  applySkin(getSelectedSkin());
+});
 
 // Hide HUD on initial load (menu state)
 showHUD(false);
 showMultiplier(false);
+
+// ---------------------------------------------------------------------------
+// Pause
+// ---------------------------------------------------------------------------
+function togglePause() {
+  if (gameState === 'playing') {
+    gameState = 'paused';
+    stopMusic();
+    showPauseScreen(
+      () => { gameState = 'playing'; lastTime = performance.now(); startMusic(); },
+      () => { gameState = 'gameover'; hidePauseScreen(); gameOver(); },
+    );
+  } else if (gameState === 'paused') {
+    hidePauseScreen();
+    gameState = 'playing';
+    lastTime = performance.now();
+    startMusic();
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Controls — only act when playing
@@ -66,6 +102,7 @@ initControls({
   onJump: () => { if (gameState === 'playing') { jump(); playJump(); } },
   onSlide: () => { if (gameState === 'playing') slide(); },
   onAction: () => { /* reserved for future use */ },
+  onPause: () => { if (gameState === 'playing' || gameState === 'paused') togglePause(); },
 });
 
 // ---------------------------------------------------------------------------
@@ -75,7 +112,6 @@ function startGame() {
   hideStartScreen();
   hideGameOverScreen();
 
-  // Reset game variables
   playerZ = 0;
   speed = BASE_SPEED;
   elapsed = 0;
@@ -84,42 +120,65 @@ function startGame() {
   distance = 0;
   hearts = 3;
   fishCount = 0;
+  goldenFishCount = 0;
   newAchievements = [];
   dreadsSurvivedThisRun = 0;
+  lastDamageDistance = 0;
+  longestNoDamage = 0;
 
-  // Clean up any active dread mode
   cleanupDread();
 
-  // Reset entities
   resetPenguin();
+  applySkin(getSelectedSkin());
   clearObstacles(scene);
   clearCollectibles(scene);
+  resetTerrain();
 
-  // Reset HUD
   updateScore(0);
   updateHearts(hearts);
   updateFishCount(0);
   showHUD(true);
   showMultiplier(false);
 
+  startMusic();
   gameState = 'playing';
 }
 
 function gameOver() {
   gameState = 'gameover';
   playGameOver();
+  stopMusic();
   cleanupDread();
   showHUD(false);
 
-  // Achievement checking
-  const persistentStats = incrementPersistentStats({ dreadsSurvived: dreadsSurvivedThisRun });
+  const quickDeath = elapsed < 5;
+  const maxSpeedReached = speed >= MAX_SPEED;
+
+  // Track no-damage streak at end of run
+  const streakAtEnd = distance - lastDamageDistance;
+  if (streakAtEnd > longestNoDamage) longestNoDamage = streakAtEnd;
+
+  const persistentStats = incrementPersistentStats({
+    dreadsSurvived: dreadsSurvivedThisRun,
+    fishThisRun: fishCount,
+    goldenFishThisRun: goldenFishCount,
+    distance,
+    score,
+  });
+
   const runStats = {
     distance,
     score,
     fishThisRun: fishCount,
+    goldenFishThisRun: goldenFishCount,
     dreadsSurvived: dreadsSurvivedThisRun,
     totalDreadsSurvived: persistentStats.totalDreadsSurvived,
     totalGames: persistentStats.totalGames,
+    totalFish: persistentStats.totalFish,
+    completedQuotes: getCompletedQuoteCount(),
+    maxSpeedReached,
+    quickDeath,
+    longestNoDamage,
   };
   newAchievements = checkAchievements(runStats);
 
@@ -145,24 +204,21 @@ function gameLoop(now) {
   lastTime = now;
 
   if (gameState === 'playing') {
-    // Speed ramp-up over time
     elapsed += delta;
     speed = Math.min(BASE_SPEED + Math.floor(elapsed / 10) * SPEED_INCREMENT, MAX_SPEED);
 
-    // Apply dread speed multiplier
     const dreadMultiplier = getDreadSpeedMultiplier();
     const currentSpeed = speed * dreadMultiplier;
 
     playerZ -= currentSpeed * delta;
 
-    // Track distance and score separately (with dread score multiplier)
     distance += currentSpeed * delta;
     const scoreMultiplier = isDreadActive() ? DREAD_MULTIPLIER : 1;
     score += currentSpeed * delta * POINTS_PER_METER * scoreMultiplier;
     updateScore(score);
 
-    updatePenguin(delta);
-    updateTerrain(playerZ);
+    updatePenguin(delta, currentSpeed);
+    updateTerrain(currentSpeed, delta);
     updateDread(delta);
 
     // Obstacle spawning & movement
@@ -179,6 +235,12 @@ function gameLoop(now) {
           playHit();
           hearts -= damage;
           updateHearts(hearts);
+
+          // Track no-damage streaks
+          const streak = distance - lastDamageDistance;
+          if (streak > longestNoDamage) longestNoDamage = streak;
+          lastDamageDistance = distance;
+
           if (hearts <= 0) {
             gameOver();
             break;
@@ -195,7 +257,7 @@ function gameLoop(now) {
 
     const penguinForPickup = getPenguinGroup();
     if (penguinForPickup) {
-      const pickups = checkCollectiblePickup(penguinForPickup.position, getCurrentLane());
+      const pickups = checkCollectiblePickup(penguinForPickup.position, getCurrentLane(), scene);
       for (const pickup of pickups) {
         if (pickup.type === 'fish') {
           playCollect();
@@ -207,13 +269,21 @@ function gameLoop(now) {
             updateHearts(hearts);
           }
         } else if (pickup.type === 'goldenFish') {
-          playCollect();
+          playGoldenCollect();
           score += GOLDEN_FISH_POINTS * scoreMultiplier;
           fishCount++;
+          goldenFishCount++;
           updateFishCount(fishCount);
         } else if (pickup.type === 'quote') {
-          const isNew = collectQuote(pickup.quoteText);
-          if (isNew) newAchievements.push('Quote: "' + pickup.quoteText + '"');
+          playQuoteCollect();
+          const result = collectRandomFragment();
+          if (result) {
+            if (result.isComplete) {
+              showToast(`"${result.fullQuote}"`, 3000);
+            } else {
+              showToast(`Fragment: "${result.text}"`, 2000);
+            }
+          }
         } else if (pickup.type === 'abyssOrb' && !isDreadActive()) {
           playDreadEnter();
           startDread(scene, () => {
@@ -227,7 +297,7 @@ function gameLoop(now) {
     }
   }
 
-  // Camera and render always run (background visible in menu/gameover)
+  // Camera and render always run (background visible in menu/gameover/paused)
   const camera = getCamera();
   camera.position.set(CAMERA_OFFSET.x, CAMERA_OFFSET.y, CAMERA_OFFSET.z);
   camera.lookAt(0, 1, -CAMERA_LOOK_AHEAD);

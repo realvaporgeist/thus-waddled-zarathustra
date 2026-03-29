@@ -5,7 +5,6 @@ import {
   CHUNK_LENGTH,
   VISIBLE_CHUNKS,
   TERRAIN_Y,
-  ICE_COLOR,
   PATH_COLOR,
   SNOW_COLOR,
   MOUNTAIN_COLOR,
@@ -28,85 +27,127 @@ const snowMaterial = new THREE.MeshStandardMaterial({
 });
 
 export function createTerrain(scene) {
-  for (let i = 0; i < VISIBLE_CHUNKS; i++) {
+  const numChunks = VISIBLE_CHUNKS + 1;
+  for (let i = 0; i < numChunks; i++) {
     spawnChunk(scene, -i * CHUNK_LENGTH);
   }
   mountainGroup = createMountains();
   scene.add(mountainGroup);
-  createSideSnow(scene);
 }
 
 function spawnChunk(scene, zPosition) {
+  const group = new THREE.Group();
+
   const path = new THREE.Mesh(pathGeometry, pathMaterial);
   path.rotation.x = -Math.PI / 2;
-  path.position.set(0, TERRAIN_Y, zPosition);
   path.receiveShadow = true;
-  scene.add(path);
-  chunks.push({ mesh: path, z: zPosition });
+  group.add(path);
+
+  const leftSnow = new THREE.Mesh(snowGeometry, snowMaterial);
+  leftSnow.rotation.x = -Math.PI / 2;
+  leftSnow.position.set(-35, -0.01, 0);
+  leftSnow.receiveShadow = true;
+  group.add(leftSnow);
+
+  const rightSnow = new THREE.Mesh(snowGeometry, snowMaterial);
+  rightSnow.rotation.x = -Math.PI / 2;
+  rightSnow.position.set(35, -0.01, 0);
+  rightSnow.receiveShadow = true;
+  group.add(rightSnow);
+
+  group.position.set(0, TERRAIN_Y, zPosition);
+  scene.add(group);
+  chunks.push(group);
 }
 
 function createMountains() {
   const group = new THREE.Group();
-  const mountainMat = new THREE.MeshStandardMaterial({ color: MOUNTAIN_COLOR, flatShading: true });
-  const snowCapMat = new THREE.MeshStandardMaterial({ color: SNOW_COLOR, flatShading: true });
+  const mountainMat = new THREE.MeshStandardMaterial({
+    color: MOUNTAIN_COLOR,
+    flatShading: true,
+  });
+  const snowCapMat = new THREE.MeshStandardMaterial({
+    color: 0xe8eef4,
+    flatShading: true,
+  });
+  const deepSnowMat = new THREE.MeshStandardMaterial({
+    color: 0xdde6ee,
+    flatShading: true,
+  });
 
+  // Dramatic mountain range — multiple layers for depth, matching the meme
   const peaks = [
-    { x: -15, z: -150, height: 25, radius: 12 },
-    { x: 0,   z: -170, height: 35, radius: 15 },
-    { x: 20,  z: -155, height: 28, radius: 13 },
-    { x: -30, z: -160, height: 20, radius: 10 },
-    { x: 35,  z: -165, height: 22, radius: 11 },
-    { x: 10,  z: -180, height: 30, radius: 14 },
-    { x: -20, z: -175, height: 26, radius: 12 },
+    // Back layer — massive, dominant
+    { x: -50, z: -170, h: 60, r: 35 },
+    { x: -10, z: -180, h: 75, r: 40 },
+    { x: 30,  z: -175, h: 55, r: 32 },
+    { x: 65,  z: -185, h: 65, r: 38 },
+    { x: -80, z: -190, h: 50, r: 30 },
+    { x: 90,  z: -180, h: 48, r: 28 },
+
+    // Mid layer — medium peaks filling gaps
+    { x: -35, z: -140, h: 40, r: 24 },
+    { x: 15,  z: -150, h: 50, r: 28 },
+    { x: 50,  z: -145, h: 38, r: 22 },
+    { x: -65, z: -155, h: 35, r: 20 },
+    { x: 75,  z: -150, h: 42, r: 24 },
+    { x: -15, z: -145, h: 32, r: 18 },
+
+    // Front layer — smaller foothills
+    { x: -45, z: -110, h: 22, r: 15 },
+    { x: 40,  z: -115, h: 25, r: 16 },
+    { x: -10, z: -108, h: 18, r: 13 },
+    { x: 65,  z: -112, h: 20, r: 14 },
+    { x: -70, z: -118, h: 16, r: 12 },
   ];
 
   for (const peak of peaks) {
-    const geometry = new THREE.ConeGeometry(peak.radius, peak.height, 6);
-    const mountain = new THREE.Mesh(geometry, mountainMat);
-    mountain.position.set(peak.x, peak.height / 2, peak.z);
+    const sides = 5 + Math.floor(Math.random() * 4); // 5-8 sides for variety
+
+    // Main mountain body
+    const geo = new THREE.ConeGeometry(peak.r, peak.h, sides);
+    const mountain = new THREE.Mesh(geo, mountainMat);
+    mountain.position.set(peak.x, peak.h / 2, peak.z);
     group.add(mountain);
 
-    const capGeometry = new THREE.ConeGeometry(peak.radius * 0.4, peak.height * 0.25, 6);
-    const cap = new THREE.Mesh(capGeometry, snowCapMat);
-    cap.position.set(peak.x, peak.height * 0.85, peak.z);
+    // Snow cap (top 35%)
+    const capGeo = new THREE.ConeGeometry(peak.r * 0.45, peak.h * 0.35, sides);
+    const cap = new THREE.Mesh(capGeo, snowCapMat);
+    cap.position.set(peak.x, peak.h * 0.82, peak.z);
     group.add(cap);
+
+    // Mid-snow band (adds coverage)
+    if (peak.h > 30) {
+      const bandGeo = new THREE.ConeGeometry(peak.r * 0.65, peak.h * 0.2, sides);
+      const band = new THREE.Mesh(bandGeo, deepSnowMat);
+      band.position.set(peak.x, peak.h * 0.65, peak.z);
+      group.add(band);
+    }
   }
 
   return group;
 }
 
-function createSideSnow(scene) {
-  const leftSnow = new THREE.Mesh(snowGeometry, snowMaterial);
-  leftSnow.rotation.x = -Math.PI / 2;
-  leftSnow.position.set(-35, TERRAIN_Y - 0.01, -75);
-  leftSnow.receiveShadow = true;
-  scene.add(leftSnow);
+export function updateTerrain(speed, delta) {
+  for (const group of chunks) {
+    group.position.z += speed * delta;
+  }
 
-  const rightSnow = new THREE.Mesh(snowGeometry, snowMaterial);
-  rightSnow.rotation.x = -Math.PI / 2;
-  rightSnow.position.set(35, TERRAIN_Y - 0.01, -75);
-  rightSnow.receiveShadow = true;
-  scene.add(rightSnow);
-}
+  let minZ = Infinity;
+  for (const group of chunks) {
+    if (group.position.z < minZ) minZ = group.position.z;
+  }
 
-export function updateTerrain(playerZ) {
-  const farthestNeeded = playerZ - CHUNK_LENGTH * VISIBLE_CHUNKS;
-
-  if (chunks.length > 0) {
-    const farthest = chunks[chunks.length - 1].z;
-    if (farthest > farthestNeeded) {
-      const scene = chunks[0].mesh.parent;
-      spawnChunk(scene, farthest - CHUNK_LENGTH);
+  for (const group of chunks) {
+    if (group.position.z > CHUNK_LENGTH) {
+      group.position.z = minZ - CHUNK_LENGTH;
     }
   }
+}
 
-  while (chunks.length > 0 && chunks[0].z > playerZ + 20) {
-    const old = chunks.shift();
-    old.mesh.parent.remove(old.mesh);
-  }
-
-  if (mountainGroup) {
-    mountainGroup.position.z = playerZ - 150;
+export function resetTerrain() {
+  for (let i = 0; i < chunks.length; i++) {
+    chunks[i].position.z = -i * CHUNK_LENGTH;
   }
 }
 

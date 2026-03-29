@@ -30,7 +30,7 @@ export function initScene(canvas) {
     CAMERA_FOV,
     window.innerWidth / window.innerHeight,
     0.1,
-    200
+    400
   );
   camera.position.set(CAMERA_OFFSET.x, CAMERA_OFFSET.y, CAMERA_OFFSET.z);
   camera.lookAt(0, 1, -CAMERA_LOOK_AHEAD);
@@ -41,10 +41,11 @@ export function initScene(canvas) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  // Softer lighting for overcast look
+  const ambientLight = new THREE.AmbientLight(0xddeeff, 0.7);
   scene.add(ambientLight);
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
   directionalLight.position.set(5, 15, 10);
   directionalLight.castShadow = true;
   directionalLight.shadow.mapSize.width = 1024;

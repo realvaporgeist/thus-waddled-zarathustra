@@ -6,19 +6,35 @@ let heartsEl = null;
 let scoreEl = null;
 let fishEl = null;
 let multiplierEl = null;
+let pauseBtn = null;
+let toastEl = null;
+let toastTimer = null;
 
-export function createHUD() {
+export function createHUD(onPause) {
   hudContainer = document.createElement('div');
   hudContainer.id = 'hud';
-
   hudContainer.innerHTML = `
-    <div id="hud-hearts"></div>
+    <div id="hud-left">
+      <div id="hud-hearts"></div>
+      <div id="hud-fish">&#x1F41F; 0</div>
+    </div>
     <div id="hud-score">0</div>
-    <div id="hud-fish">🐟 0</div>
     <div id="hud-multiplier" class="hidden">2X</div>
   `;
-
   document.getElementById('ui-overlay').appendChild(hudContainer);
+
+  // Pause button — separate from HUD layout to avoid overlap
+  pauseBtn = document.createElement('button');
+  pauseBtn.id = 'hud-pause';
+  pauseBtn.innerHTML = '&#x23F8;'; // pause icon
+  pauseBtn.addEventListener('click', (e) => { e.stopPropagation(); if (onPause) onPause(); });
+  document.getElementById('ui-overlay').appendChild(pauseBtn);
+
+  // Toast notification
+  toastEl = document.createElement('div');
+  toastEl.id = 'hud-toast';
+  toastEl.className = 'hidden';
+  document.getElementById('ui-overlay').appendChild(toastEl);
 
   heartsEl = document.getElementById('hud-hearts');
   scoreEl = document.getElementById('hud-score');
@@ -34,7 +50,7 @@ export function updateHearts(hearts) {
   for (let i = 0; i < MAX_HEARTS; i++) {
     const heart = document.createElement('span');
     heart.className = 'heart';
-    heart.textContent = i < hearts ? '❤️' : '🖤';
+    heart.textContent = i < hearts ? '\u2764\uFE0F' : '\u{1F5A4}';
     heartsEl.appendChild(heart);
   }
 }
@@ -46,7 +62,7 @@ export function updateScore(score) {
 
 export function updateFishCount(count) {
   if (!fishEl) return;
-  fishEl.textContent = `🐟 ${count}`;
+  fishEl.textContent = `\u{1F41F} ${count}`;
 }
 
 export function showMultiplier(show) {
@@ -55,7 +71,17 @@ export function showMultiplier(show) {
 }
 
 export function showHUD(visible) {
-  if (hudContainer) {
-    hudContainer.style.display = visible ? 'flex' : 'none';
-  }
+  if (hudContainer) hudContainer.style.display = visible ? 'flex' : 'none';
+  if (pauseBtn) pauseBtn.style.display = visible ? 'block' : 'none';
+}
+
+export function showToast(text, duration = 2000) {
+  if (!toastEl) return;
+  toastEl.textContent = text;
+  toastEl.classList.remove('hidden');
+  toastEl.classList.remove('toast-fade');
+  void toastEl.offsetWidth; // reflow
+  toastEl.classList.add('toast-fade');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.add('hidden'), duration);
 }

@@ -7,7 +7,7 @@
 body {
   overflow: hidden;
   background: #000;
-  font-family: 'Bangers', cursive;
+  font-family: 'Oswald', sans-serif;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
@@ -46,10 +46,17 @@ body {
   justify-content: space-between;
   align-items: flex-start;
   padding: 16px 20px;
+  padding-right: 60px; /* leave room for pause button */
   font-size: 24px;
   color: #fff;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
   z-index: 10;
+}
+
+#hud-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 #hud-hearts {
@@ -59,13 +66,14 @@ body {
 }
 
 #hud-score {
-  font-family: 'Bangers', cursive;
   font-size: 36px;
+  font-weight: 700;
   letter-spacing: 2px;
 }
 
 #hud-fish {
-  font-size: 22px;
+  font-size: 20px;
+  font-weight: 500;
 }
 
 #hud-multiplier {
@@ -73,11 +81,67 @@ body {
   top: 60px;
   left: 50%;
   transform: translateX(-50%);
-  font-family: 'Bangers', cursive;
   font-size: 40px;
+  font-weight: 700;
   color: #ff4444;
   text-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
   animation: pulse 0.5s ease-in-out infinite alternate;
+}
+
+#hud-pause {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 44px;
+  height: 44px;
+  font-size: 24px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  text-shadow: none;
+  z-index: 11;
+  line-height: 40px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#hud-pause:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Toast notification */
+#hud-toast {
+  position: absolute;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: #ffd700;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: center;
+  z-index: 12;
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: 90vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#hud-toast.toast-fade {
+  animation: toast-in 0.3s ease-out;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 @keyframes pulse {
@@ -91,7 +155,8 @@ body {
 
 /* Screens */
 #start-screen,
-#gameover-screen {
+#gameover-screen,
+#pause-screen {
   position: absolute;
   inset: 0;
   display: flex;
@@ -106,64 +171,99 @@ body {
 }
 
 .game-title {
-  font-family: 'Bangers', cursive;
   font-size: clamp(48px, 12vw, 96px);
+  font-weight: 700;
   line-height: 1;
   color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 4px;
   text-shadow: 4px 4px 0 #1a1a2e, 0 0 20px rgba(100, 180, 255, 0.5);
   margin-bottom: 10px;
 }
 
 .subtitle {
-  font-size: 18px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
   color: #aaccee;
   font-style: italic;
   margin-bottom: 20px;
+  letter-spacing: 1px;
 }
 
 #high-score-display {
-  font-family: 'Bangers', cursive;
   font-size: 24px;
+  font-weight: 600;
   color: #ffd700;
   margin-bottom: 30px;
 }
 
 .start-prompt {
-  font-family: 'Bangers', cursive;
   font-size: 28px;
-  animation: pulse 0.8s ease-in-out infinite alternate;
+  font-weight: 600;
+  letter-spacing: 3px;
+  animation: pulse-text 0.8s ease-in-out infinite alternate;
   margin-bottom: 30px;
 }
 
+@keyframes pulse-text {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
+.controls-hint {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #7799bb;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.controls-hint span {
+  color: #aaccee;
+  font-weight: 500;
+}
+
+.menu-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
 .gameover-title {
-  font-family: 'Bangers', cursive;
   font-size: clamp(32px, 8vw, 64px);
+  font-weight: 700;
   color: #ff4444;
+  text-transform: uppercase;
+  letter-spacing: 3px;
   text-shadow: 3px 3px 0 #000;
   margin-bottom: 10px;
 }
 
 .new-high {
-  font-family: 'Bangers', cursive;
   font-size: 28px;
+  font-weight: 600;
   color: #ffd700;
-  animation: pulse 0.5s ease-in-out infinite alternate;
+  animation: pulse-text 0.5s ease-in-out infinite alternate;
   margin-bottom: 10px;
 }
 
 .gameover-stats {
-  font-family: 'Bangers', cursive;
   font-size: 22px;
+  font-weight: 500;
   line-height: 1.6;
   margin-bottom: 20px;
 }
 
 .gameover-quote {
-  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
   font-style: italic;
   color: #aaa;
   max-width: 400px;
   margin-bottom: 20px;
+  line-height: 1.5;
 }
 
 .gameover-achievements {
@@ -175,27 +275,55 @@ body {
   color: #ffd700;
 }
 
-.game-btn,
-#achievements-btn {
-  font-family: 'Bangers', cursive;
-  font-size: 24px;
+.game-btn {
+  font-family: 'Oswald', sans-serif;
+  font-size: 22px;
+  font-weight: 600;
   padding: 12px 40px;
   background: #4488cc;
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   letter-spacing: 2px;
+  text-transform: uppercase;
   margin: 8px;
+  transition: background 0.15s;
 }
 
-.game-btn:hover,
-#achievements-btn:hover {
+.game-btn:hover {
   background: #5599dd;
 }
 
+/* Pause Screen */
+#pause-screen {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.pause-title {
+  font-size: 56px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  margin-bottom: 40px;
+}
+
+.pause-controls {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #8899aa;
+  line-height: 2;
+  margin-bottom: 30px;
+}
+
+.pause-controls span {
+  color: #ccc;
+  font-weight: 500;
+}
+
 /* Achievements Gallery */
-#achievements-gallery {
+#achievements-gallery,
+#skin-gallery {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.85);
@@ -209,8 +337,10 @@ body {
 }
 
 .gallery-title {
-  font-family: 'Bangers', cursive;
   font-size: 42px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
   margin-bottom: 20px;
 }
 
@@ -221,31 +351,119 @@ body {
 }
 
 .gallery-section h3 {
-  font-family: 'Bangers', cursive;
-  font-size: 22px;
+  font-size: 20px;
+  font-weight: 600;
   color: #aaccee;
   margin-bottom: 10px;
   border-bottom: 1px solid #333;
   padding-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .gallery-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
-  padding: 8px 0;
+  padding: 10px 0;
   border-bottom: 1px solid #222;
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .gallery-item.locked { opacity: 0.4; }
+.gallery-item.partial { opacity: 0.7; }
 
 .gallery-icon {
   font-size: 22px;
   min-width: 30px;
   text-align: center;
+  flex-shrink: 0;
 }
 
-.gallery-name { font-weight: bold; }
-.gallery-desc { color: #888; font-size: 14px; }
-.gallery-text { font-style: italic; font-size: 14px; }
+.gallery-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gallery-name {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.gallery-desc {
+  font-family: 'Inter', sans-serif;
+  color: #888;
+  font-size: 13px;
+}
+
+.gallery-flavor {
+  font-family: 'Inter', sans-serif;
+  color: #667;
+  font-size: 12px;
+  font-style: italic;
+}
+
+.gallery-text {
+  font-family: 'Inter', sans-serif;
+  font-style: italic;
+  font-size: 14px;
+}
+
+/* Quote fragment styles */
+.frag-found {
+  color: #ffd700;
+}
+
+.frag-missing {
+  color: #555;
+  font-style: normal;
+}
+
+/* Skin Gallery */
+.skin-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #222;
+  cursor: default;
+}
+
+.skin-item.unlocked {
+  cursor: pointer;
+}
+
+.skin-item.unlocked:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.skin-item.selected {
+  background: rgba(68, 136, 204, 0.15);
+  border-left: 3px solid #4488cc;
+  padding-left: 9px;
+}
+
+.skin-preview {
+  flex-shrink: 0;
+}
+
+.skin-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.skin-selected-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4488cc;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Obstacle indicators */
+.obstacle-hint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
