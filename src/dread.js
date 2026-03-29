@@ -166,3 +166,5 @@ export function cleanupDread() {
     shadowCreatures = [];
   }
 }
+
+export function getDreadTimer() { return timer; }
