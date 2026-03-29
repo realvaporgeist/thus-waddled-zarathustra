@@ -44,7 +44,7 @@ export function initAurora(sceneRef) {
       positions[topIdx * 3 + 2] = 0;
 
       positions[botIdx * 3] = x;
-      positions[botIdx * 3 + 1] = -3 - Math.random() * 2;
+      positions[botIdx * 3 + 1] = -10 - Math.random() * 6;
       positions[botIdx * 3 + 2] = 0;
 
       uvs[topIdx * 2] = u;
@@ -78,8 +78,9 @@ export function initAurora(sceneRef) {
         void main() {
           vUv = uv;
           vec3 pos = position;
-          float wave = sin(pos.x * 0.08 + uTime + uPhase) * 4.0
-                     + sin(pos.x * 0.15 + uTime * 0.7 + uPhase) * 2.0;
+          float wave = sin(pos.x * 0.04 + uTime + uPhase) * 8.0
+                     + sin(pos.x * 0.09 + uTime * 0.7 + uPhase) * 4.0
+                     + sin(pos.x * 0.02 + uTime * 0.3) * 3.0;
           pos.y += wave * uv.y;
           pos.z += sin(pos.x * 0.05 + uTime * 0.5) * 2.0;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
@@ -106,8 +107,8 @@ export function initAurora(sceneRef) {
     });
 
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(0, AURORA_Y + r * 5, AURORA_Z - r * 10);
-    mesh.rotation.x = -0.15;
+    mesh.position.set((r - 1.5) * 15, AURORA_Y + r * 8, AURORA_Z - r * 15);
+    mesh.rotation.x = -0.12;
     scene.add(mesh);
 
     ribbons.push({ mesh, material, phaseOffset: r * 2.1 });

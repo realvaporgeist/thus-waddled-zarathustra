@@ -65,9 +65,60 @@ export function initScene(canvas) {
   directionalLight.shadow.camera.bottom = -20;
   scene.add(directionalLight);
 
+  // Clouds
+  createClouds(scene);
+
   window.addEventListener('resize', onResize);
 
   return { scene, camera, renderer };
+}
+
+function createClouds(scene) {
+  const cloudMat = new THREE.MeshStandardMaterial({
+    color: 0xc8d8e8,
+    roughness: 1,
+    transparent: true,
+    opacity: 0.6,
+    flatShading: true,
+  });
+  const cloudMatDark = new THREE.MeshStandardMaterial({
+    color: 0x9ab0c4,
+    roughness: 1,
+    transparent: true,
+    opacity: 0.4,
+    flatShading: true,
+  });
+
+  const cloudConfigs = [
+    { x: -40, y: 35, z: -120, scale: 1.2, mat: cloudMat },
+    { x: 50, y: 40, z: -150, scale: 1.5, mat: cloudMat },
+    { x: -20, y: 45, z: -180, scale: 1.0, mat: cloudMatDark },
+    { x: 70, y: 32, z: -100, scale: 0.9, mat: cloudMat },
+    { x: -60, y: 42, z: -160, scale: 1.3, mat: cloudMatDark },
+    { x: 30, y: 38, z: -200, scale: 1.1, mat: cloudMat },
+    { x: -80, y: 36, z: -140, scale: 1.4, mat: cloudMat },
+    { x: 90, y: 44, z: -170, scale: 1.0, mat: cloudMatDark },
+  ];
+
+  for (const cfg of cloudConfigs) {
+    const cloud = new THREE.Group();
+    // Each cloud is a cluster of 3-5 flattened spheres
+    const puffCount = 3 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < puffCount; i++) {
+      const r = (2 + Math.random() * 3) * cfg.scale;
+      const geo = new THREE.SphereGeometry(r, 7, 5);
+      const puff = new THREE.Mesh(geo, cfg.mat);
+      puff.position.set(
+        (Math.random() - 0.5) * 6 * cfg.scale,
+        (Math.random() - 0.5) * 1.5 * cfg.scale,
+        (Math.random() - 0.5) * 3 * cfg.scale,
+      );
+      puff.scale.y = 0.4 + Math.random() * 0.2; // flatten vertically
+      cloud.add(puff);
+    }
+    cloud.position.set(cfg.x, cfg.y, cfg.z);
+    scene.add(cloud);
+  }
 }
 
 function onResize() {

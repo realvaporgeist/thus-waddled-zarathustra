@@ -105,11 +105,11 @@ export const WEATHER_FOG = {
 };
 
 // Aurora
-export const AURORA_RIBBON_COUNT = 3;
-export const AURORA_Y = 50;
-export const AURORA_Z = -120;
-export const AURORA_WIDTH = 80;
-export const AURORA_SEGMENTS = 64;
+export const AURORA_RIBBON_COUNT = 4;
+export const AURORA_Y = 60;
+export const AURORA_Z = -100;
+export const AURORA_WIDTH = 220;
+export const AURORA_SEGMENTS = 96;
 export const AURORA_WAVE_SPEED = 0.3;
 export const AURORA_COLOR_SPEED = 0.15;
 
