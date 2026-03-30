@@ -7,7 +7,7 @@ import {
   IDLE_WADDLE_SPEED, IDLE_BLINK_MIN, IDLE_BLINK_MAX,
   IDLE_BLINK_DURATION, IDLE_LOOK_MIN, IDLE_LOOK_MAX,
   IDLE_LOOK_DURATION, KNOCKBACK_DURATION, KNOCKBACK_DISTANCE,
-  LANE_WIDTH,
+  LANE_WIDTH, DEATH_ANIM_DURATION,
 } from './constants.js';
 
 let penguinGroup = null;
@@ -346,8 +346,8 @@ export function resetPenguin() {
   invincible = false; invincibilityTimer = 0; blinkTimer = 0; waddleTime = 0;
   if (penguinGroup) {
     penguinGroup.position.set(LANE_POSITIONS[currentLane], TERRAIN_Y, 0);
-    penguinGroup.rotation.y = Math.PI;
-    penguinGroup.scale.y = normalScaleY;
+    penguinGroup.rotation.set(0, Math.PI, 0);
+    penguinGroup.scale.set(1, normalScaleY, 1);
     penguinGroup.visible = true;
     body.rotation.z = 0;
     leftFoot.position.z = 0.05; rightFoot.position.z = 0.05;
@@ -427,4 +427,79 @@ export function applyDrift(dx) {
   const minX = LANE_POSITIONS[0] - LANE_WIDTH * 0.4;
   const maxX = LANE_POSITIONS[2] + LANE_WIDTH * 0.4;
   penguinGroup.position.x = Math.max(minX, Math.min(maxX, penguinGroup.position.x));
+}
+
+// ---------------------------------------------------------------------------
+// Death animation
+// ---------------------------------------------------------------------------
+let deathAnimActive = false;
+let deathAnimTimer = 0;
+let deathAnimCallback = null;
+
+export function playDeathAnimation(callback) {
+  deathAnimActive = true;
+  deathAnimTimer = 0;
+  deathAnimCallback = callback;
+}
+
+export function getDeathAnimProgress() {
+  if (deathAnimTimer > 0) return Math.min(deathAnimTimer / DEATH_ANIM_DURATION, 1);
+  return 0;
+}
+
+export function getPenguinDeathPosition() {
+  if (!penguinGroup) return { x: 0, z: 0 };
+  return { x: penguinGroup.position.x, z: penguinGroup.position.z };
+}
+
+export function updateDeathAnimation(delta) {
+  if (!deathAnimActive || !penguinGroup) return false;
+
+  deathAnimTimer += delta;
+  const t = Math.min(deathAnimTimer / DEATH_ANIM_DURATION, 1);
+
+  if (t < 0.1) {
+    // Phase 1: Stumble — wings flail frantically, body wobbles
+    const p = t / 0.1;
+    if (leftWing) leftWing.rotation.z = Math.sin(p * Math.PI * 8) * 1.0;
+    if (rightWing) rightWing.rotation.z = -Math.sin(p * Math.PI * 8) * 1.0;
+    if (body) body.rotation.z = Math.sin(p * Math.PI * 6) * 0.15;
+  } else if (t < 0.45) {
+    // Phase 2: Topple backward (toward camera) — full fall onto back
+    const p = (t - 0.1) / 0.35;
+    const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+    penguinGroup.rotation.x = eased * Math.PI * 0.5;
+    if (leftWing) leftWing.rotation.z = 0.8 + eased * 0.5;
+    if (rightWing) rightWing.rotation.z = -(0.8 + eased * 0.5);
+    if (body) body.rotation.z = 0;
+  } else {
+    // Phase 3: Lying flat on back — tiny settling twitch, then still
+    penguinGroup.rotation.x = Math.PI * 0.5;
+    if (leftWing) leftWing.rotation.z = 1.3;
+    if (rightWing) rightWing.rotation.z = -1.3;
+    // Subtle settle
+    const p = (t - 0.45) / 0.55;
+    if (p < 0.2) {
+      const twitch = Math.sin(p / 0.2 * Math.PI) * 0.03;
+      if (body) body.rotation.z = twitch;
+    } else {
+      if (body) body.rotation.z = 0;
+    }
+  }
+
+  if (t >= 1) {
+    deathAnimActive = false;
+    // Penguin stays visible — lying in the snow behind game over screen
+    if (deathAnimCallback) deathAnimCallback();
+    return false;
+  }
+  return true;
+}
+
+export function isDeathAnimating() { return deathAnimActive; }
+
+export function resetDeathAnimation() {
+  deathAnimActive = false;
+  deathAnimTimer = 0;
+  deathAnimCallback = null;
 }

@@ -16,6 +16,8 @@ import {
   PHILOSOPHER_FOG_MIN_DISTANCE,
   PHILOSOPHER_FOG_DEPTH,
   MAX_COMPLEX_OBSTACLES,
+  LATE_GAME_DISTANCE,
+  ABYSS_MIN_OBSTACLE_GAP,
 } from './constants.js';
 
 import { spawnFishAt } from './collectibles.js';
@@ -145,8 +147,14 @@ function applyCastShadow(mesh) {
   }
 }
 
-function getSpawnGap(difficulty) {
-  return Math.max(MIN_OBSTACLE_GAP, 15 - difficulty * 0.5);
+function getSpawnGap(difficulty, distance = 0) {
+  let gap = Math.max(MIN_OBSTACLE_GAP, 15 - difficulty * 0.5);
+  // Late-game: obstacles continue to tighten beyond the normal minimum
+  if (distance > LATE_GAME_DISTANCE) {
+    const extraTightening = Math.min((distance - LATE_GAME_DISTANCE) / 8000 * 3, 3);
+    gap = Math.max(ABYSS_MIN_OBSTACLE_GAP, gap - extraTightening);
+  }
+  return gap;
 }
 
 function createObstacleMesh(typeName) {
@@ -464,21 +472,21 @@ export function spawnObstacle(scene, worldZ, difficulty, distance, weather) {
     spawnIceWall(scene, -OBSTACLE_SPAWN_DISTANCE);
     obstacleHistory.push({ typeName, lane: -1 });
     if (obstacleHistory.length > MAX_HISTORY) obstacleHistory.shift();
-    nextSpawnZ = worldZ - getSpawnGap(difficulty);
+    nextSpawnZ = worldZ - getSpawnGap(difficulty, distance);
     return;
   }
   if (typeName === 'crevasse') {
     spawnCrevasse(scene, -OBSTACLE_SPAWN_DISTANCE);
     obstacleHistory.push({ typeName, lane: -1 });
     if (obstacleHistory.length > MAX_HISTORY) obstacleHistory.shift();
-    nextSpawnZ = worldZ - getSpawnGap(difficulty);
+    nextSpawnZ = worldZ - getSpawnGap(difficulty, distance);
     return;
   }
   if (typeName === 'windGust') {
     spawnWindGust(scene, -OBSTACLE_SPAWN_DISTANCE);
     obstacleHistory.push({ typeName, lane: 1 });
     if (obstacleHistory.length > MAX_HISTORY) obstacleHistory.shift();
-    nextSpawnZ = worldZ - getSpawnGap(difficulty);
+    nextSpawnZ = worldZ - getSpawnGap(difficulty, distance);
     return;
   }
   if (typeName === 'philosopherFog') {
@@ -486,7 +494,7 @@ export function spawnObstacle(scene, worldZ, difficulty, distance, weather) {
     spawnPhilosopherFog(scene, -OBSTACLE_SPAWN_DISTANCE, lane);
     obstacleHistory.push({ typeName, lane });
     if (obstacleHistory.length > MAX_HISTORY) obstacleHistory.shift();
-    nextSpawnZ = worldZ - getSpawnGap(difficulty);
+    nextSpawnZ = worldZ - getSpawnGap(difficulty, distance);
     return;
   }
 
@@ -500,7 +508,7 @@ export function spawnObstacle(scene, worldZ, difficulty, distance, weather) {
   obstacleHistory.push({ typeName, lane });
   if (obstacleHistory.length > MAX_HISTORY) obstacleHistory.shift();
 
-  nextSpawnZ = worldZ - getSpawnGap(difficulty);
+  nextSpawnZ = worldZ - getSpawnGap(difficulty, distance);
 }
 
 export function updateObstacles(delta, worldZ, speed) {

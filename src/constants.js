@@ -226,8 +226,18 @@ export const SCREEN_SHAKE_INTENSITY_LIGHT = 0.08;
 export const SCREEN_SHAKE_INTENSITY_HEAVY = 0.2;
 export const VIGNETTE_DURATION = 0.2;
 export const VIGNETTE_OPACITY = 0.3;
-export const SPEED_LINE_THRESHOLD = 0.8; // fraction of MAX_SPEED
+export const SPEED_LINE_THRESHOLD = 0.7; // fraction of MAX_SPEED (lowered for gradual onset)
 export const NEAR_MISS_THRESHOLD = 0.3;
+export const SPEED_FOV_BOOST = 8; // max FOV increase at full speed
+
+// Death animation
+export const DEATH_ANIM_DURATION = 2.0;
+
+// Late-game difficulty scaling
+export const LATE_GAME_DISTANCE = 5000;
+export const LATE_GAME_EXTRA_SPEED = 10;
+export const LATE_GAME_SPEED_SCALE_DIST = 5000;
+export const ABYSS_MIN_OBSTACLE_GAP = 5;
 
 // Cinematic camera
 export const CAMERA_INTRO_DURATION = 3.0;

@@ -134,15 +134,53 @@ function spawnChunk(scene, zPosition) {
   chunks.push(group);
 }
 
+// Displace cone vertices for rugged, natural-looking ridges
+function displaceConePeak(geometry, height) {
+  const pos = geometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+
+    const r = Math.sqrt(x * x + z * z);
+    if (r < 0.01) continue; // skip tip vertex
+
+    // Height fraction (0 at base, 1 at tip)
+    const hFrac = (y + height / 2) / height;
+
+    // Sinusoidal noise — strongest at mid-height for ridgeline character
+    const noiseScale = Math.sin(hFrac * Math.PI) * 0.15;
+    const angle = Math.atan2(z, x);
+    const noise = Math.sin(angle * 5.3 + hFrac * 7.1) * 0.5 +
+                  Math.sin(angle * 11.7 + hFrac * 3.3) * 0.3 +
+                  Math.sin(angle * 2.1 + hFrac * 13.7) * 0.2;
+
+    pos.setX(i, x * (1 + noise * noiseScale));
+    pos.setZ(i, z * (1 + noise * noiseScale));
+    pos.setY(i, y + noise * height * 0.01);
+  }
+  pos.needsUpdate = true;
+  geometry.computeVertexNormals();
+}
+
 function createMountainLayer(layerConfig, layerIndex) {
   const group = new THREE.Group();
   const baseTint = new THREE.Color(MOUNTAIN_COLOR);
   const fogColor = new THREE.Color(0xa8c4d8);
   const tintedColor = baseTint.clone().lerp(fogColor, layerConfig.fogTint);
 
+  // Darker base shade for gradient effect
+  const darkerBase = tintedColor.clone().multiplyScalar(0.7);
+
   const mountainMat = new THREE.MeshStandardMaterial({
     color: tintedColor, flatShading: true,
   });
+  // Far mountains get subtle emissive glow for atmosphere
+  if (layerIndex === 0) {
+    mountainMat.emissive = new THREE.Color(0x334466);
+    mountainMat.emissiveIntensity = 0.08;
+  }
+
   const snowCapMat = new THREE.MeshStandardMaterial({
     color: 0xe8eef4, flatShading: true,
     opacity: 1 - layerConfig.fogTint * 0.5,
@@ -153,11 +191,15 @@ function createMountainLayer(layerConfig, layerIndex) {
     opacity: 1 - layerConfig.fogTint * 0.3,
     transparent: layerConfig.fogTint > 0.3,
   });
+  // Darker rock material for secondary ridges
+  const ridgeMat = new THREE.MeshStandardMaterial({
+    color: darkerBase, flatShading: true,
+  });
 
-  const peakCount = layerIndex === 0 ? 8 : layerIndex === 1 ? 7 : 5;
+  const peakCount = layerIndex === 0 ? 10 : layerIndex === 1 ? 8 : 6;
   const peaks = [];
   for (let i = 0; i < peakCount; i++) {
-    const spread = layerIndex === 0 ? 200 : layerIndex === 1 ? 180 : 160;
+    const spread = layerIndex === 0 ? 220 : layerIndex === 1 ? 190 : 160;
     const x = (i / (peakCount - 1)) * spread - spread / 2 + (Math.random() - 0.5) * 20;
     const baseHeight = layerIndex === 0 ? 55 : layerIndex === 1 ? 38 : 22;
     const h = baseHeight + (Math.random() - 0.5) * baseHeight * 0.5;
@@ -167,23 +209,52 @@ function createMountainLayer(layerConfig, layerIndex) {
   }
 
   for (const peak of peaks) {
-    const sides = 5 + Math.floor(Math.random() * 4);
-    const geo = new THREE.ConeGeometry(peak.r, peak.h, sides);
+    // More segments + displacement = rugged natural silhouette
+    const sides = 10 + Math.floor(Math.random() * 6);
+    const heightSegs = 4;
+    const geo = new THREE.ConeGeometry(peak.r, peak.h, sides, heightSegs);
+    displaceConePeak(geo, peak.h);
     const mountain = new THREE.Mesh(geo, mountainMat);
-    // Position so base sits exactly on TERRAIN_Y (cone is centered, so offset by half height)
     mountain.position.set(peak.x, TERRAIN_Y + peak.h / 2, peak.z);
     group.add(mountain);
 
-    const capGeo = new THREE.ConeGeometry(peak.r * 0.45, peak.h * 0.35, sides);
+    // Snow cap — also displaced for natural look
+    const capSides = Math.max(6, sides - 2);
+    const capGeo = new THREE.ConeGeometry(peak.r * 0.45, peak.h * 0.35, capSides, 2);
+    displaceConePeak(capGeo, peak.h * 0.35);
     const cap = new THREE.Mesh(capGeo, snowCapMat);
     cap.position.set(peak.x, TERRAIN_Y + peak.h * 0.82, peak.z);
     group.add(cap);
 
+    // Deep snow band on taller peaks
     if (peak.h > 20) {
-      const bandGeo = new THREE.ConeGeometry(peak.r * 0.65, peak.h * 0.2, sides);
+      const bandGeo = new THREE.ConeGeometry(peak.r * 0.65, peak.h * 0.2, capSides, 2);
+      displaceConePeak(bandGeo, peak.h * 0.2);
       const band = new THREE.Mesh(bandGeo, deepSnowMat);
       band.position.set(peak.x, TERRAIN_Y + peak.h * 0.65, peak.z);
       group.add(band);
+    }
+
+    // Secondary ridge — smaller shoulder peak offset from main
+    if (peak.h > 15 && Math.random() > 0.4) {
+      const ridgeH = peak.h * (0.3 + Math.random() * 0.25);
+      const ridgeR = peak.r * (0.3 + Math.random() * 0.2);
+      const ridgeSides = 6 + Math.floor(Math.random() * 4);
+      const ridgeGeo = new THREE.ConeGeometry(ridgeR, ridgeH, ridgeSides, 2);
+      displaceConePeak(ridgeGeo, ridgeH);
+      const ridge = new THREE.Mesh(ridgeGeo, ridgeMat);
+      const offsetX = (Math.random() > 0.5 ? 1 : -1) * peak.r * (0.4 + Math.random() * 0.3);
+      const offsetZ = (Math.random() - 0.5) * 5;
+      ridge.position.set(peak.x + offsetX, TERRAIN_Y + ridgeH / 2, peak.z + offsetZ);
+      group.add(ridge);
+
+      // Mini snow cap on the ridge
+      if (ridgeH > 10) {
+        const rCapGeo = new THREE.ConeGeometry(ridgeR * 0.4, ridgeH * 0.3, ridgeSides);
+        const rCap = new THREE.Mesh(rCapGeo, snowCapMat);
+        rCap.position.set(peak.x + offsetX, TERRAIN_Y + ridgeH * 0.82, peak.z + offsetZ);
+        group.add(rCap);
+      }
     }
   }
 

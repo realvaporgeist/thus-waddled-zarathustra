@@ -1,7 +1,7 @@
 // src/main.js
 import * as THREE from 'three';
 import { initSplash, destroySplash } from './splash.js';
-import { initScene, render, getCamera } from './scene.js';
+import { initScene, render, getCamera, updateSpeedFeel, resetSpeedFeel } from './scene.js';
 import { createTerrain, updateTerrain, resetTerrain } from './terrain.js';
 import {
   createPenguin, updatePenguin, switchLane, jump, slide,
@@ -45,11 +45,12 @@ import { swayMountains } from './terrain.js';
 import {
   setIdleMode, updateIdleAnimation, triggerKnockback,
   showShieldVisual, hideShieldVisual, updateShieldVisual,
-  applyDrift,
+  applyDrift, playDeathAnimation, updateDeathAnimation,
+  resetDeathAnimation, getDeathAnimProgress, getPenguinDeathPosition,
 } from './penguin.js';
 import {
   triggerScreenShake, updateScreenEffects, getShakeOffset,
-  showRedVignette, setSpeedLinesVisible,
+  showRedVignette,
   showSlowTimeFilter, hideSlowTimeFilter,
   showRushFilter, hideRushFilter,
   startDiscoVisuals, updateDiscoVisuals, stopDiscoVisuals,
@@ -73,7 +74,8 @@ import {
   GOLDEN_FISH_POINTS, FISH_PER_HEAL, MAX_HEARTS, DREAD_MULTIPLIER,
   DREAD_DAMAGE_MULTIPLIER,
   SCREEN_SHAKE_INTENSITY_LIGHT, SCREEN_SHAKE_INTENSITY_HEAVY,
-  SPEED_LINE_THRESHOLD, COLLECTION_PARTICLES, DREAD_DURATION,
+  COLLECTION_PARTICLES, DREAD_DURATION,
+  LATE_GAME_DISTANCE, LATE_GAME_EXTRA_SPEED, LATE_GAME_SPEED_SCALE_DIST,
   CAMERA_INTRO_DURATION, CAMERA_INTRO_START, CAMERA_INTRO_END,
   CAMERA_INTRO_LOOK_START, CAMERA_INTRO_LOOK_END,
   CAMERA_GAMEPLAY_TRANSITION, CAMERA_IDLE_SWAY_SPEED, CAMERA_IDLE_SWAY_AMOUNT,
@@ -87,7 +89,7 @@ import {
 // ---------------------------------------------------------------------------
 // Game state
 // ---------------------------------------------------------------------------
-let gameState = 'menu'; // 'menu' | 'playing' | 'paused' | 'gameover'
+let gameState = 'menu'; // 'menu' | 'playing' | 'paused' | 'dying' | 'gameover'
 
 let playerZ = 0;
 let speed = BASE_SPEED;
@@ -111,8 +113,9 @@ let cleanBossDefeatThisRun = false;
 let weatherScoreBonus = 1;
 
 // Camera state machine
-let cameraState = 'intro'; // 'intro' | 'idle' | 'transitioning' | 'gameplay'
+let cameraState = 'intro'; // 'intro' | 'idle' | 'transitioning' | 'gameplay' | 'deathCam'
 let cameraTimer = 0;
+let deathCamStart = null; // { pos, lookAt } — snapshot of camera when death begins
 let introSkipped = false;
 
 // ---------------------------------------------------------------------------
@@ -253,10 +256,12 @@ function startGame() {
 
   cleanupDread();
   cleanupCombo();
+  resetDeathAnimation();
   hideShieldVisual();
   hideSlowTimeFilter();
   hideRushFilter();
   stopDiscoVisuals();
+  resetSpeedFeel();
   setAuroraDiscoMode(false);
   discoTriggeredThisRun = false;
   reachedUbermenschThisRun = false;
@@ -277,7 +282,6 @@ function startGame() {
     onDiscoStart: () => {
       startDiscoVisuals();
       setAuroraDiscoMode(true);
-      setSpeedLinesVisible(true);
       triggerScreenShake(SCREEN_SHAKE_INTENSITY_HEAVY);
       // Big burst of particles
       const pos = getPenguinGroup()?.position?.clone();
@@ -295,11 +299,10 @@ function startGame() {
       hideSlowTimeFilter();
       hideRushFilter();
       hideDiscoTimer();
-      setSpeedLinesVisible(speed >= MAX_SPEED * SPEED_LINE_THRESHOLD);
     },
     onEffectStart: (key) => {
       if (key === 'slowTime') showSlowTimeFilter();
-      if (key === 'rush') { showRushFilter(); setSpeedLinesVisible(true); }
+      if (key === 'rush') { showRushFilter(); }
       if (key === 'shield') { showShieldVisual(); boostPowerupSpawns(); }
       if (key === 'magnet') boostPowerupSpawns();
 
@@ -319,7 +322,7 @@ function startGame() {
     },
     onEffectEnd: (key) => {
       if (key === 'slowTime') hideSlowTimeFilter();
-      if (key === 'rush') { hideRushFilter(); setSpeedLinesVisible(speed >= MAX_SPEED * SPEED_LINE_THRESHOLD); }
+      if (key === 'rush') { hideRushFilter(); }
       if (key === 'shield') hideShieldVisual();
       if (key === 'magnet') snapFishToNearestLane();
     },
@@ -369,6 +372,18 @@ function startGame() {
 
   playTrack('gameplay');
   gameState = 'playing';
+}
+
+function startDeathSequence() {
+  gameState = 'dying';
+  // Snapshot current camera for smooth transition
+  const cam = getCamera();
+  deathCamStart = {
+    pos: { x: cam.position.x, y: cam.position.y, z: cam.position.z },
+  };
+  cameraState = 'deathCam';
+  cameraTimer = 0;
+  playDeathAnimation(() => gameOver());
 }
 
 function gameOver() {
@@ -430,7 +445,7 @@ function gameOver() {
     returnToMainMenu();
   });
 
-  setSpeedLinesVisible(false);
+  resetSpeedFeel();
   updateDreadTimerBar(0, false);
   clearParticles();
 }
@@ -455,7 +470,7 @@ function returnToMainMenu() {
   resetPenguin();
   setIdleMode(true);
   showHUD(false);
-  setSpeedLinesVisible(false);
+  resetSpeedFeel();
   updateDreadTimerBar(0, false);
   setWeather('clearAurora');
   cameraState = 'idle';
@@ -496,6 +511,10 @@ function gameLoop(now) {
   if (gameState === 'playing') {
     elapsed += delta;
     speed = Math.min(BASE_SPEED + Math.floor(elapsed / 10) * SPEED_INCREMENT, MAX_SPEED);
+    // Late-game: speed continues to climb slowly past MAX_SPEED
+    if (distance > LATE_GAME_DISTANCE) {
+      speed += Math.min((distance - LATE_GAME_DISTANCE) / LATE_GAME_SPEED_SCALE_DIST * LATE_GAME_EXTRA_SPEED, LATE_GAME_EXTRA_SPEED);
+    }
 
     const dreadMultiplier = getDreadSpeedMultiplier();
     const powerupSpeedMult = getSpeedMultiplier();
@@ -589,14 +608,14 @@ function gameLoop(now) {
             if (getCurrentBoss().id === 'abyssSerpent') {
               const caught = notifySerpentHit();
               if (caught) {
-                gameOver();
+                startDeathSequence();
                 break;
               }
             }
           }
 
           if (hearts <= 0) {
-            gameOver();
+            startDeathSequence();
             break;
           }
           startInvincibility(INVINCIBILITY_DURATION);
@@ -730,6 +749,18 @@ function gameLoop(now) {
     }
   }
 
+  // Death animation — keep the world moving while penguin dies
+  if (gameState === 'dying') {
+    updateDeathAnimation(delta);
+    // World keeps scrolling — obstacles, terrain, collectibles don't freeze
+    const dreadMultiplier = getDreadSpeedMultiplier();
+    const powerupSpeedMult = getSpeedMultiplier();
+    const dyingSpeed = speed * dreadMultiplier * powerupSpeedMult;
+    updateTerrain(dyingSpeed, delta);
+    updateObstacles(delta, playerZ, dyingSpeed);
+    updateCollectibles(delta, dyingSpeed);
+  }
+
   // Update visual systems (always run)
   updateAurora(delta);
   updateParticles(delta);
@@ -825,6 +856,28 @@ function gameLoop(now) {
     if (t >= 1) {
       cameraState = 'gameplay';
     }
+  } else if (cameraState === 'deathCam') {
+    // Cinematic death camera — zoom out to overhead shot of fallen penguin
+    const deathT = getDeathAnimProgress();
+    const ease = deathT * deathT * (3 - 2 * deathT); // smoothstep
+    const penguinPos = getPenguinDeathPosition();
+    const startPos = deathCamStart ? deathCamStart.pos : CAMERA_OFFSET;
+
+    // End position: directly above the penguin, slightly offset on Z for perspective
+    const endX = penguinPos.x;
+    const endY = 14;
+    const endZ = penguinPos.z + 1.5;
+
+    camera.position.set(
+      THREE.MathUtils.lerp(startPos.x, endX, ease),
+      THREE.MathUtils.lerp(startPos.y, endY, ease),
+      THREE.MathUtils.lerp(startPos.z, endZ, ease),
+    );
+    camera.lookAt(
+      THREE.MathUtils.lerp(0, penguinPos.x, ease),
+      THREE.MathUtils.lerp(1, 0, ease),
+      THREE.MathUtils.lerp(-CAMERA_LOOK_AHEAD, penguinPos.z, ease),
+    );
   } else {
     camera.position.set(
       CAMERA_OFFSET.x + shake.x,
@@ -834,9 +887,10 @@ function gameLoop(now) {
     camera.lookAt(0, 1, -CAMERA_LOOK_AHEAD);
   }
 
-  // Speed lines based on current speed
+  // Speed feel — dynamic speed lines, blur, FOV
   if (gameState === 'playing') {
-    setSpeedLinesVisible(speed >= MAX_SPEED * SPEED_LINE_THRESHOLD);
+    const effectiveMax = MAX_SPEED + (distance > LATE_GAME_DISTANCE ? LATE_GAME_EXTRA_SPEED : 0);
+    updateSpeedFeel(speed / effectiveMax);
   }
 
   render();

@@ -14,6 +14,8 @@ import {
   DREAD_FOG_FAR,
   SCREEN_SHAKE_DURATION,
   DISCO_STROBE_INTERVAL,
+  SPEED_LINE_THRESHOLD,
+  SPEED_FOV_BOOST,
 } from './constants.js';
 
 let scene, camera, renderer;
@@ -181,6 +183,48 @@ export function setSpeedLinesVisible(visible) {
   if (el) {
     el.classList.toggle('hidden', !visible);
     el.classList.toggle('active', visible);
+  }
+}
+
+export function updateSpeedFeel(speedRatio) {
+  const el = document.getElementById('speed-lines');
+  const blur = document.getElementById('speed-blur');
+
+  if (speedRatio >= SPEED_LINE_THRESHOLD) {
+    const intensity = (speedRatio - SPEED_LINE_THRESHOLD) / (1 - SPEED_LINE_THRESHOLD);
+    if (el) {
+      el.classList.remove('hidden');
+      el.classList.add('active');
+      el.style.opacity = String(0.3 + intensity * 0.7);
+    }
+    if (blur) {
+      blur.style.opacity = String(intensity * 0.5);
+    }
+  } else {
+    if (el) {
+      el.classList.add('hidden');
+      el.classList.remove('active');
+      el.style.opacity = '0';
+    }
+    if (blur) blur.style.opacity = '0';
+  }
+
+  // FOV boost at high speed — subtle widening for speed sensation
+  const fovBoost = Math.max(0, (speedRatio - 0.6) / 0.4) * SPEED_FOV_BOOST;
+  if (camera) {
+    camera.fov = CAMERA_FOV + fovBoost;
+    camera.updateProjectionMatrix();
+  }
+}
+
+export function resetSpeedFeel() {
+  const el = document.getElementById('speed-lines');
+  const blur = document.getElementById('speed-blur');
+  if (el) { el.classList.add('hidden'); el.classList.remove('active'); el.style.opacity = '0'; }
+  if (blur) blur.style.opacity = '0';
+  if (camera) {
+    camera.fov = CAMERA_FOV;
+    camera.updateProjectionMatrix();
   }
 }
 

@@ -20,11 +20,11 @@
 
 ## Polish
 
-- [ ] **Death animation** — penguin death anim before game over screen
-- [ ] **Death screen mobile** — optimize layout for smaller screens
-- [ ] **Motion blur / speed feel** — enhance speed lines, add peripheral blur at high velocity
-- [ ] **Mountains** — make them prettier
-- [ ] **Abyss mode scaling** — difficulty should ramp, not flatline
+- [x] **Death animation** — penguin death anim before game over screen
+- [x] **Death screen mobile** — optimize layout for smaller screens
+- [x] **Motion blur / speed feel** — enhance speed lines, add peripheral blur at high velocity
+- [x] **Mountains** — make them prettier
+- [x] **Abyss mode scaling** — difficulty should ramp, not flatline
 
 ## Features (Need Spec)
 
