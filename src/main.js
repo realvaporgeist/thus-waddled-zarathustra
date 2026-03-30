@@ -12,18 +12,19 @@ import { initControls } from './controls.js';
 import { spawnObstacle, updateObstacles, getActiveObstacles, clearObstacles, setObstacleDrawDistance } from './obstacles.js';
 import { checkCollision } from './collision.js';
 import { spawnCollectibles, updateCollectibles, checkCollectiblePickup, clearCollectibles, applyMagnetPull, autoCollectAllFish, setWeatherCollectibleModifiers } from './collectibles.js';
-import { createHUD, updateScore, updateHearts, updateFishCount, showHUD, showMultiplier, showToast } from './hud.js';
+import { createHUD, updateScore, updateHearts, updateFishCount, updateDistance, showHUD, showMultiplier, showToast } from './hud.js';
 import {
   createStartScreen, hideStartScreen, showStartScreen,
   showGameOverScreen, hideGameOverScreen,
   showPauseScreen, hidePauseScreen, onSkinChange,
+  showButWhyPopup, isHardcoreMode,
 } from './screens.js';
 import { checkAchievements, incrementPersistentStats, collectRandomFragment, getCompletedQuoteCount } from './achievements.js';
 import { startDread, updateDread, isDreadActive, getDreadSpeedMultiplier, cleanupDread, getDreadTimer } from './dread.js';
 import {
   initAudio, playJump, playHit, playCollect, playGoldenCollect,
   playQuoteCollect, playDreadEnter, playDreadExit, playGameOver,
-  playTrack, fadeOutMusic, resumeMusic,
+  playTrack, fadeOutMusic, resumeMusic, muffleMusic, unmuffleMusic, getBassEnergy,
 } from './audio.js';
 import { getSelectedSkin } from './skins.js';
 import {
@@ -52,7 +53,7 @@ import {
   showSlowTimeFilter, hideSlowTimeFilter,
   startDiscoVisuals, updateDiscoVisuals, stopDiscoVisuals,
 } from './scene.js';
-import { setAuroraDiscoMode } from './aurora.js';
+import { setAuroraDiscoMode, pulseAurora } from './aurora.js';
 import {
   bounceScore, shakeHeart, pulseLastHeart, updateDreadTimerBar,
   updateComboBar, flashComboTierUp, updatePowerupIcons, updateAbilityButton,
@@ -171,16 +172,16 @@ showMultiplier(false);
 function togglePause() {
   if (gameState === 'playing') {
     gameState = 'paused';
-    fadeOutMusic();
+    muffleMusic();
     showPauseScreen(
-      () => { gameState = 'playing'; lastTime = performance.now(); resumeMusic(); },
-      () => { gameState = 'gameover'; hidePauseScreen(); gameOver(); },
+      () => { gameState = 'playing'; lastTime = performance.now(); unmuffleMusic(); },
+      () => { gameState = 'gameover'; hidePauseScreen(); unmuffleMusic(); gameOver(); },
     );
   } else if (gameState === 'paused') {
     hidePauseScreen();
     gameState = 'playing';
     lastTime = performance.now();
-    resumeMusic();
+    unmuffleMusic();
   }
 }
 
@@ -195,7 +196,7 @@ initControls({
   onAction: () => { /* reserved for future use */ },
   onPause: () => { if (gameState === 'playing' || gameState === 'paused') togglePause(); },
   onAbility: () => {
-    if (gameState !== 'playing') return;
+    if (gameState !== 'playing' || isHardcoreMode()) return;
     if (isSlowTimeCharged() && isRushCharged()) {
       cycleAbility();
     } else {
@@ -203,7 +204,7 @@ initControls({
     }
   },
   onAbilityHold: () => {
-    if (gameState !== 'playing') return;
+    if (gameState !== 'playing' || isHardcoreMode()) return;
     activateSelectedAbility();
   },
 });
@@ -234,6 +235,8 @@ function startGame() {
   hideStartScreen();
   hideGameOverScreen();
 
+  showButWhyPopup();
+
   cameraState = 'transitioning';
   cameraTimer = 0;
   introSkipped = false;
@@ -246,7 +249,7 @@ function startGame() {
   lastTime = performance.now();
   score = 0;
   distance = 0;
-  hearts = 3;
+  hearts = isHardcoreMode() ? 1 : MAX_HEARTS;
   fishCount = 0;
   goldenFishCount = 0;
   newAchievements = [];
@@ -396,11 +399,41 @@ function gameOver() {
 
   showGameOverScreen(score, distance, fishCount, newAchievements, () => {
     startGame();
+  }, () => {
+    returnToMainMenu();
   });
 
   setSpeedLinesVisible(false);
   updateDreadTimerBar(0, false);
   clearParticles();
+}
+
+// ---------------------------------------------------------------------------
+// Return to main menu
+// ---------------------------------------------------------------------------
+function returnToMainMenu() {
+  gameState = 'menu';
+  stopDiscoVisuals();
+  setAuroraDiscoMode(false);
+  cleanupDread();
+  cleanupCombo();
+  cleanupPowerups();
+  cleanupBosses();
+  hideBossWarning();
+  hideBossBar();
+  clearParticles();
+  clearObstacles(scene);
+  clearCollectibles(scene);
+  resetPenguin();
+  setIdleMode(true);
+  showHUD(false);
+  setSpeedLinesVisible(false);
+  updateDreadTimerBar(0, false);
+  setWeather('clearAurora');
+  cameraState = 'idle';
+  cameraTimer = 0;
+  playTrack('menu');
+  showStartScreen();
 }
 
 // ---------------------------------------------------------------------------
@@ -443,10 +476,12 @@ function gameLoop(now) {
     playerZ -= currentSpeed * delta;
 
     distance += currentSpeed * delta;
+    updateDistance(distance);
     const comboMult = getComboMultiplier();
     const dreadScoreMult = isDreadActive() ? DREAD_MULTIPLIER : 1;
     const powerupScoreMult = getScoreMultiplier();
-    score += currentSpeed * delta * POINTS_PER_METER * comboMult * dreadScoreMult * powerupScoreMult * weatherScoreBonus;
+    const distanceMult = 1 + Math.floor(distance / 500) * 0.1;
+    score += currentSpeed * delta * POINTS_PER_METER * comboMult * dreadScoreMult * powerupScoreMult * weatherScoreBonus * distanceMult;
     updateScore(score);
 
     updatePenguin(delta, currentSpeed);
@@ -593,7 +628,7 @@ function gameLoop(now) {
           fishCount++;
           score += FISH_POINTS * dreadScoreMult;
           updateFishCount(fishCount);
-          if (fishCount % FISH_PER_HEAL === 0 && hearts < MAX_HEARTS) {
+          if (fishCount % FISH_PER_HEAL === 0 && hearts < MAX_HEARTS && !isHardcoreMode()) {
             hearts++;
             updateHearts(hearts);
           }
@@ -628,12 +663,12 @@ function gameLoop(now) {
             dreadsSurvivedThisRun++;
           });
           showMultiplier(true);
-        } else if (pickup.type === 'shield') {
+        } else if (pickup.type === 'shield' && !isHardcoreMode()) {
           activateShield();
           showShieldVisual();
           emitParticles({ ...SHIELD_SHATTER_PARTICLES, position: penguinForPickup.position.clone() });
           showToast('ETERNAL SHIELD', 1500);
-        } else if (pickup.type === 'magnet') {
+        } else if (pickup.type === 'magnet' && !isHardcoreMode()) {
           activateMagnet();
           emitParticles({ ...MAGNET_VORTEX_PARTICLES, position: penguinForPickup.position.clone() });
           showToast('FISH MAGNET', 1500);
@@ -669,6 +704,12 @@ function gameLoop(now) {
   updateAurora(delta);
   updateParticles(delta);
   updateScreenEffects(delta);
+
+  // Aurora beat pulse — bounce on kick drum
+  const bassEnergy = getBassEnergy();
+  if (bassEnergy > 0.35) {
+    pulseAurora(bassEnergy * 1.5);
+  }
 
   // Weather updates only during gameplay
   if (gameState === 'playing') {

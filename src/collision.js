@@ -32,12 +32,18 @@ export function checkCollision(penguinPos, penguinSliding, penguinJumping, obsta
     return dz < 1.0 && dx < LANE_WIDTH * 0.45;
   }
 
-  // --- Crevasse: only hits grounded players ---
+  // --- Crevasse: only hits grounded players, supports multi-lane ---
   if (obstacle.typeName === 'crevasse') {
     if (penguinJumping) return false;
     const dz = Math.abs(penguinPos.z - obstacle.mesh.position.z);
+    if (dz >= 1.0) return false;
+    if (obstacle.coveredLanes) {
+      return obstacle.coveredLanes.some(l =>
+        Math.abs(penguinPos.x - LANE_POSITIONS[l]) < LANE_WIDTH * 0.45
+      );
+    }
     const dx = Math.abs(penguinPos.x - obstacle.mesh.position.x);
-    return dz < 1.0 && dx < LANE_WIDTH * 0.45;
+    return dx < LANE_WIDTH * 0.45;
   }
 
   // --- Standard AABB collision ---

@@ -20,6 +20,9 @@ const GAME_OVER_QUOTES = [
 let startScreen = null;
 let gameOverScreen = null;
 let pauseScreen = null;
+let hardcoreEnabled = false;
+
+export function isHardcoreMode() { return hardcoreEnabled; }
 
 // ---------------------------------------------------------------------------
 // Start screen
@@ -41,12 +44,19 @@ export function createStartScreen(onStart) {
     <div class="menu-buttons">
       <button id="achievements-btn" class="game-btn">ACHIEVEMENTS</button>
       <button id="skins-btn" class="game-btn">SKINS</button>
+      <button id="hardcore-btn" class="game-btn hardcore-toggle">HARDCORE: OFF</button>
     </div>
   `;
   document.getElementById('ui-overlay').appendChild(startScreen);
 
   document.getElementById('achievements-btn').addEventListener('click', (e) => { e.stopPropagation(); showAchievementsGallery(); });
   document.getElementById('skins-btn').addEventListener('click', (e) => { e.stopPropagation(); showSkinGallery(); });
+  document.getElementById('hardcore-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    hardcoreEnabled = !hardcoreEnabled;
+    e.target.textContent = `HARDCORE: ${hardcoreEnabled ? 'ON' : 'OFF'}`;
+    e.target.classList.toggle('hardcore-on', hardcoreEnabled);
+  });
 
   refreshHighScore();
 
@@ -70,10 +80,20 @@ function refreshHighScore() {
 export function hideStartScreen() { if (startScreen) startScreen.style.display = 'none'; }
 export function showStartScreen() { if (startScreen) { startScreen.style.display = 'flex'; refreshHighScore(); } }
 
+export function showButWhyPopup() {
+  const popup = document.createElement('div');
+  popup.id = 'but-why-popup';
+  popup.innerHTML = '<span class="but-why-text">BUT WHY</span>';
+  document.getElementById('ui-overlay').appendChild(popup);
+  // Animation is 2s fly-through, remove after it finishes
+  popup.addEventListener('animationend', () => popup.remove());
+  setTimeout(() => popup.remove(), 2200); // safety cleanup
+}
+
 // ---------------------------------------------------------------------------
 // Game over screen
 // ---------------------------------------------------------------------------
-export function showGameOverScreen(score, distance, fishCount, newAchievements, onRestart) {
+export function showGameOverScreen(score, distance, fishCount, newAchievements, onRestart, onMainMenu) {
   const prev = Number(localStorage.getItem('np_highscore') || 0);
   const isNewHigh = score > prev;
   if (isNewHigh) localStorage.setItem('np_highscore', Math.floor(score));
@@ -94,11 +114,13 @@ export function showGameOverScreen(score, distance, fishCount, newAchievements, 
     <p class="gameover-quote">"${quote}"</p>
     ${newAchievements.length > 0 ? `<div class="gameover-achievements"><p>UNLOCKED:</p>${newAchievements.map(a => `<p class="achievement-item">${a}</p>`).join('')}</div>` : ''}
     <button id="restart-btn" class="game-btn">PLAY AGAIN</button>
+    <button id="mainmenu-btn" class="game-btn" style="background:#666;">MAIN MENU</button>
   `;
   document.getElementById('ui-overlay').appendChild(gameOverScreen);
 
   const restartHandler = () => { gameOverScreen.remove(); gameOverScreen = null; onRestart(); };
   document.getElementById('restart-btn').addEventListener('click', restartHandler);
+  document.getElementById('mainmenu-btn').addEventListener('click', () => { gameOverScreen.remove(); gameOverScreen = null; if (onMainMenu) onMainMenu(); });
   window.addEventListener('keydown', function handler(e) {
     if (e.code === 'Space' || e.code === 'Enter') { window.removeEventListener('keydown', handler); restartHandler(); }
   });

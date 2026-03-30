@@ -573,6 +573,56 @@ body {
   letter-spacing: 1px;
 }
 
+/* Distance display */
+#hud-distance {
+  font-size: 16px;
+  font-weight: 400;
+  color: #aaccee;
+  opacity: 0.7;
+}
+
+/* BUT WHY popup — 3D fly-through */
+#but-why-popup {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 150;
+  pointer-events: none;
+  perspective: 600px;
+  perspective-origin: center center;
+}
+
+.but-why-text {
+  font-size: clamp(48px, 14vw, 140px);
+  font-weight: 900;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 16px;
+  text-shadow: 0 0 60px rgba(255, 68, 68, 0.9), 0 0 120px rgba(136, 0, 204, 0.4);
+  animation: but-why-fly 2s ease-in forwards;
+}
+
+@keyframes but-why-fly {
+  0%   { transform: translateZ(-800px) rotateX(10deg); opacity: 0; }
+  15%  { opacity: 1; }
+  60%  { opacity: 0.95; }
+  100% { transform: translateZ(500px) rotateX(-5deg); opacity: 0; }
+}
+
+/* Hardcore mode toggle */
+.hardcore-toggle {
+  background: #555 !important;
+  font-size: 16px !important;
+  padding: 8px 20px !important;
+}
+
+.hardcore-toggle.hardcore-on {
+  background: #cc2222 !important;
+  box-shadow: 0 0 12px rgba(255, 0, 0, 0.4);
+}
+
 /* Obstacle indicators */
 .obstacle-hint {
   font-size: 12px;

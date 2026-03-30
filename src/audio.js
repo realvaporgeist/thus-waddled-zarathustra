@@ -6,13 +6,27 @@ import creditsTrackUrl from '../assets/sounds/music/Credits.mp3';
 
 let ctx = null;
 let masterGain = null;
+let muffleFilter = null;
+let analyser = null;
+let analyserData = null;
 
 function ensureCtx() {
   if (!ctx) {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = ctx.createGain();
     masterGain.gain.value = 1;
-    masterGain.connect(ctx.destination);
+
+    muffleFilter = ctx.createBiquadFilter();
+    muffleFilter.type = 'lowpass';
+    muffleFilter.frequency.value = 20000;
+
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    analyserData = new Uint8Array(analyser.frequencyBinCount);
+
+    masterGain.connect(muffleFilter);
+    muffleFilter.connect(analyser);
+    analyser.connect(ctx.destination);
   }
   if (ctx.state === 'suspended') ctx.resume();
   return ctx;
@@ -231,6 +245,41 @@ export function resumeMusic() {
   currentGainNode.gain.cancelScheduledValues(t);
   currentGainNode.gain.setValueAtTime(currentGainNode.gain.value, t);
   currentGainNode.gain.linearRampToValueAtTime(MUSIC_VOLUME, t + CROSSFADE_DURATION);
+}
+
+export function muffleMusic() {
+  if (!muffleFilter || !currentGainNode) return;
+  const c = ensureCtx();
+  const t = c.currentTime;
+  musicPaused = true;
+  muffleFilter.frequency.cancelScheduledValues(t);
+  muffleFilter.frequency.setValueAtTime(muffleFilter.frequency.value, t);
+  muffleFilter.frequency.linearRampToValueAtTime(300, t + 0.3);
+  currentGainNode.gain.cancelScheduledValues(t);
+  currentGainNode.gain.setValueAtTime(currentGainNode.gain.value, t);
+  currentGainNode.gain.linearRampToValueAtTime(MUSIC_VOLUME * 0.3, t + 0.3);
+}
+
+export function unmuffleMusic() {
+  if (!muffleFilter || !currentGainNode || !musicPaused) return;
+  const c = ensureCtx();
+  const t = c.currentTime;
+  musicPaused = false;
+  muffleFilter.frequency.cancelScheduledValues(t);
+  muffleFilter.frequency.setValueAtTime(muffleFilter.frequency.value, t);
+  muffleFilter.frequency.linearRampToValueAtTime(20000, t + 0.3);
+  currentGainNode.gain.cancelScheduledValues(t);
+  currentGainNode.gain.setValueAtTime(currentGainNode.gain.value, t);
+  currentGainNode.gain.linearRampToValueAtTime(MUSIC_VOLUME, t + 0.3);
+}
+
+export function getBassEnergy() {
+  if (!analyser || !analyserData) return 0;
+  analyser.getByteFrequencyData(analyserData);
+  let sum = 0;
+  const bins = 6;
+  for (let i = 0; i < bins; i++) sum += analyserData[i];
+  return sum / (bins * 255);
 }
 
 // Start fetching MP3 bytes immediately on module load (no AudioContext needed)

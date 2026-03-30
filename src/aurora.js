@@ -12,9 +12,15 @@ let currentOpacity = 0.4;
 let targetOpacity = 0.4;
 let dreadBlend = 0;
 let discoMode = false;
+let beatPulse = 0;
+const BEAT_DECAY = 3;
 
 export function setAuroraDiscoMode(active) {
   discoMode = active;
+}
+
+export function pulseAurora(intensity = 1) {
+  beatPulse = Math.max(beatPulse, intensity);
 }
 
 const normalColors = [
@@ -72,6 +78,7 @@ export function initAurora(sceneRef) {
         uTime: { value: 0 },
         uPhase: { value: r * 2.1 },
         uOpacity: { value: currentOpacity },
+        uBeatPulse: { value: 0 },
         uColor1: { value: normalColors[0].clone() },
         uColor2: { value: normalColors[1].clone() },
         uColor3: { value: normalColors[2].clone() },
@@ -79,12 +86,14 @@ export function initAurora(sceneRef) {
       vertexShader: `
         uniform float uTime;
         uniform float uPhase;
+        uniform float uBeatPulse;
         varying vec2 vUv;
         void main() {
           vUv = uv;
           vec3 pos = position;
-          float wave = sin(pos.x * 0.04 + uTime + uPhase) * 8.0
-                     + sin(pos.x * 0.09 + uTime * 0.7 + uPhase) * 4.0
+          float pulse = 1.0 + uBeatPulse * 1.2;
+          float wave = sin(pos.x * 0.04 + uTime + uPhase) * 8.0 * pulse
+                     + sin(pos.x * 0.09 + uTime * 0.7 + uPhase) * 4.0 * pulse
                      + sin(pos.x * 0.02 + uTime * 0.3) * 3.0;
           pos.y += wave * uv.y;
           pos.z += sin(pos.x * 0.05 + uTime * 0.5) * 2.0;
@@ -93,6 +102,7 @@ export function initAurora(sceneRef) {
       `,
       fragmentShader: `
         uniform float uOpacity;
+        uniform float uBeatPulse;
         uniform vec3 uColor1;
         uniform vec3 uColor2;
         uniform vec3 uColor3;
@@ -102,7 +112,7 @@ export function initAurora(sceneRef) {
           col = mix(col, uColor3, smoothstep(0.4, 0.8, vUv.x));
           float alpha = smoothstep(0.0, 0.3, vUv.y) * smoothstep(1.0, 0.7, vUv.y);
           alpha *= smoothstep(0.0, 0.1, vUv.x) * smoothstep(1.0, 0.9, vUv.x);
-          gl_FragColor = vec4(col, alpha * uOpacity);
+          gl_FragColor = vec4(col, alpha * uOpacity * (1.0 + uBeatPulse * 0.8));
         }
       `,
       transparent: true,
@@ -121,6 +131,8 @@ export function initAurora(sceneRef) {
 }
 
 export function updateAurora(delta) {
+  beatPulse = Math.max(0, beatPulse - BEAT_DECAY * delta);
+
   if (discoMode) {
     const hue = (performance.now() * 0.001) % 1;
     for (const ribbon of ribbons) {
@@ -128,6 +140,7 @@ export function updateAurora(delta) {
       ribbon.material.uniforms.uColor2.value.setHSL((hue + 0.33) % 1, 1, 0.5);
       ribbon.material.uniforms.uColor3.value.setHSL((hue + 0.66) % 1, 1, 0.5);
       ribbon.material.uniforms.uOpacity.value = 1.0;
+      ribbon.material.uniforms.uBeatPulse.value = beatPulse;
       ribbon.material.uniforms.uTime.value = performance.now() * 0.001 * AURORA_WAVE_SPEED;
     }
     return; // Skip normal aurora update
@@ -140,6 +153,7 @@ export function updateAurora(delta) {
   for (const ribbon of ribbons) {
     ribbon.material.uniforms.uTime.value = time * AURORA_WAVE_SPEED;
     ribbon.material.uniforms.uOpacity.value = currentOpacity;
+    ribbon.material.uniforms.uBeatPulse.value = beatPulse;
 
     for (let i = 0; i < 3; i++) {
       const uniform = [`uColor1`, `uColor2`, `uColor3`][i];

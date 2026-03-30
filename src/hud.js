@@ -6,6 +6,7 @@ let heartsEl = null;
 let scoreEl = null;
 let fishEl = null;
 let multiplierEl = null;
+let distanceEl = null;
 let pauseBtn = null;
 let toastEl = null;
 let toastTimer = null;
@@ -18,6 +19,7 @@ export function createHUD(onPause) {
     <div id="hud-left">
       <div id="hud-hearts"></div>
       <div id="hud-fish">&#x1F41F; 0</div>
+      <div id="hud-distance">0m</div>
     </div>
     <div id="hud-score">0</div>
     <div id="hud-multiplier" class="hidden">2X</div>
@@ -79,6 +81,7 @@ export function createHUD(onPause) {
   scoreEl = document.getElementById('hud-score');
   fishEl = document.getElementById('hud-fish');
   multiplierEl = document.getElementById('hud-multiplier');
+  distanceEl = document.getElementById('hud-distance');
 
   updateHearts(MAX_HEARTS);
 }
@@ -102,6 +105,11 @@ export function updateScore(score) {
 export function updateFishCount(count) {
   if (!fishEl) return;
   fishEl.textContent = `\u{1F41F} ${count}`;
+}
+
+export function updateDistance(dist) {
+  if (!distanceEl) return;
+  distanceEl.textContent = `${Math.floor(dist)}m`;
 }
 
 export function showMultiplier(show) {

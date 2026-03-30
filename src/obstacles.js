@@ -160,12 +160,13 @@ function createObstacleMesh(typeName) {
     case 'iceSpike': {
       const group = new THREE.Group();
       const spike = new THREE.Mesh(pool.spikeGeo, pool.spikeMat);
-      spike.position.y = ICE_SPIKE_HEIGHT / 2;
+      spike.position.y = 1.6; // head height — must slide under
+      spike.rotation.x = Math.PI / 2; // horizontal javelin aimed at player
       group.add(spike);
+      // Trail behind the spike
       const trail = new THREE.Mesh(pool.spikeTrailGeo, pool.spikeTrailMat);
-      trail.rotation.x = -Math.PI / 2;
-      trail.position.y = 0.05;
-      trail.position.z = 1.5;
+      trail.position.y = 1.6;
+      trail.position.z = 1.2;
       group.add(trail);
       mesh = group;
       height = ICE_SPIKE_HEIGHT;
@@ -324,6 +325,42 @@ function spawnWindGust(scene, worldZ) {
   activeObstacles.push({ mesh, height: 0, type: 'ground', typeName: 'windGust', lane, windDirection: windDir, triggered: false });
 }
 
+function spawnCrevasse(scene, worldZ) {
+  const isWide = Math.random() < 0.4; // 40% chance of 2-lane crevasse
+
+  if (isWide) {
+    const startLane = Math.random() < 0.5 ? 0 : 1; // adjacent pair: 0-1 or 1-2
+    const coveredLanes = [startLane, startLane + 1];
+    const centerX = (LANE_POSITIONS[coveredLanes[0]] + LANE_POSITIONS[coveredLanes[1]]) / 2;
+
+    const group = new THREE.Group();
+    const crack = new THREE.Mesh(
+      new THREE.PlaneGeometry(LANE_WIDTH * 2.2, 2),
+      pool.crackMat,
+    );
+    crack.rotation.x = -Math.PI / 2;
+    crack.position.y = 0.02;
+    group.add(crack);
+    const glow = new THREE.Mesh(
+      new THREE.PlaneGeometry(LANE_WIDTH * 1.8, 1.5),
+      pool.crackGlowMat,
+    );
+    glow.rotation.x = -Math.PI / 2;
+    glow.position.y = -0.1;
+    group.add(glow);
+
+    group.position.set(centerX, TERRAIN_Y, worldZ);
+    scene.add(group);
+    activeObstacles.push({ mesh: group, height: 0, type: 'ground', typeName: 'crevasse', lane: -1, coveredLanes });
+  } else {
+    const lane = Math.floor(Math.random() * 3);
+    const { mesh, height, type } = createObstacleMesh('crevasse');
+    mesh.position.set(LANE_POSITIONS[lane], TERRAIN_Y, worldZ);
+    scene.add(mesh);
+    activeObstacles.push({ mesh, height, type, typeName: 'crevasse', lane, coveredLanes: [lane] });
+  }
+}
+
 function spawnPhilosopherFog(scene, worldZ, lane) {
   const { mesh } = createObstacleMesh('philosopherFog');
   mesh.position.set(LANE_POSITIONS[lane], TERRAIN_Y, worldZ);
@@ -390,6 +427,13 @@ export function spawnObstacle(scene, worldZ, difficulty, distance, weather) {
   // Special spawn for multi-lane obstacles
   if (typeName === 'iceWall') {
     spawnIceWall(scene, -OBSTACLE_SPAWN_DISTANCE);
+    obstacleHistory.push({ typeName, lane: -1 });
+    if (obstacleHistory.length > MAX_HISTORY) obstacleHistory.shift();
+    nextSpawnZ = worldZ - getSpawnGap(difficulty);
+    return;
+  }
+  if (typeName === 'crevasse') {
+    spawnCrevasse(scene, -OBSTACLE_SPAWN_DISTANCE);
     obstacleHistory.push({ typeName, lane: -1 });
     if (obstacleHistory.length > MAX_HISTORY) obstacleHistory.shift();
     nextSpawnZ = worldZ - getSpawnGap(difficulty);
