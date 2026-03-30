@@ -86,29 +86,34 @@ export function initSplash(canvas) {
   renderer.toneMappingExposure = 1.2;
 
   splashScene = new THREE.Scene();
-  splashScene.fog = new THREE.FogExp2(0x050010, 0.15);
+  splashScene.fog = new THREE.FogExp2(0x050010, 0.1);
 
-  camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 50);
-  // Close-up from behind-right, low angle looking up at the penguin
-  camera.position.set(0.4, 0.5, 1.0);
-  camera.lookAt(0, 0.6, -0.5);
+  camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 50);
+  // Centered, pulled back — penguin's rotation provides the 3/4 view
+  camera.position.set(0.3, 0.8, 2.2);
+  camera.lookAt(0, 0.4, 0);
 
-  // Ambient — just enough to read the penguin's shape
-  splashScene.add(new THREE.AmbientLight(0x222244, 0.6));
+  // Ambient — enough to read shapes, still moody
+  splashScene.add(new THREE.AmbientLight(0x2a2a55, 0.9));
 
-  // Strong blue-purple rim light from behind — the main silhouette edge
-  const rimLight = new THREE.DirectionalLight(0x6688ff, 3.0);
-  rimLight.position.set(-1, 2, -3);
+  // Key light from upper-right — illuminates the penguin's face and belly
+  const keyLight = new THREE.DirectionalLight(0x8899cc, 2.0);
+  keyLight.position.set(2, 2, 1);
+  splashScene.add(keyLight);
+
+  // Blue rim light from behind-left — silhouette edge on the void side
+  const rimLight = new THREE.DirectionalLight(0x6688ff, 2.5);
+  rimLight.position.set(-2, 1.5, -2);
   splashScene.add(rimLight);
 
-  // Second rim from the other side for double-edge silhouette
-  const rimLight2 = new THREE.DirectionalLight(0x8844cc, 1.5);
-  rimLight2.position.set(2, 1, -2);
+  // Purple rim from behind-right — subtle second edge
+  const rimLight2 = new THREE.DirectionalLight(0x8844cc, 1.0);
+  rimLight2.position.set(1, 2, -3);
   splashScene.add(rimLight2);
 
-  // Red-purple abyss glow from below/ahead
-  abyssGlow = new THREE.PointLight(0x880044, 2.5, 6);
-  abyssGlow.position.set(0, -0.3, -1.5);
+  // Red-purple abyss glow from below/ahead-left
+  abyssGlow = new THREE.PointLight(0x880044, 2.0, 6);
+  abyssGlow.position.set(-1, -0.3, -1);
   splashScene.add(abyssGlow);
 
   // Dark ground plane
@@ -119,9 +124,9 @@ export function initSplash(canvas) {
   ground.position.y = 0;
   splashScene.add(ground);
 
-  // Penguin facing away into the void, slightly turned for 3/4 profile
+  // Penguin in profile, gazing left into the void — belly and face visible to camera
   penguin = createSplashPenguin();
-  penguin.rotation.y = Math.PI * 0.88;
+  penguin.rotation.y = Math.PI * 0.55;
   splashScene.add(penguin);
 
   // Animation
@@ -134,9 +139,9 @@ export function initSplash(canvas) {
     penguin.scale.y = 1 + Math.sin(elapsed * 1.5) * 0.008;
 
     // Very slow camera drift
-    camera.position.x = 0.4 + Math.sin(elapsed * 0.12) * 0.05;
-    camera.position.y = 0.5 + Math.cos(elapsed * 0.08) * 0.02;
-    camera.lookAt(0, 0.6, -0.5);
+    camera.position.x = 0.3 + Math.sin(elapsed * 0.12) * 0.05;
+    camera.position.y = 0.8 + Math.cos(elapsed * 0.08) * 0.02;
+    camera.lookAt(0, 0.4, 0);
 
     // Pulsing abyss glow
     abyssGlow.intensity = 1.5 + Math.sin(elapsed * 0.7) * 0.5;
