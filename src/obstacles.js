@@ -77,7 +77,7 @@ const pool = {
     color: 0xaaddff, transparent: true, opacity: 0.3, side: THREE.DoubleSide,
   }),
 
-  // Ice wall
+  // Ice wall (wide — covers 2 adjacent lanes)
   wallGeo: new THREE.BoxGeometry(LANE_WIDTH * 2.2, ICE_WALL_HEIGHT, 0.5),
   wallMat: new THREE.MeshStandardMaterial({
     color: 0x99ccdd, transparent: true, opacity: 0.7,
@@ -85,6 +85,10 @@ const pool = {
   }),
   veinGeo: new THREE.BoxGeometry(LANE_WIDTH * 2, 0.05, 0.52),
   veinMat: new THREE.MeshStandardMaterial({ color: 0xbbddee, emissive: 0xbbddee, emissiveIntensity: 0.3 }),
+
+  // Ice wall (narrow — covers a single lane)
+  wallSingleGeo: new THREE.BoxGeometry(LANE_WIDTH * 1.1, ICE_WALL_HEIGHT, 0.5),
+  veinSingleGeo: new THREE.BoxGeometry(LANE_WIDTH * 0.9, 0.05, 0.52),
 
   // Crevasse
   crackGeo: new THREE.PlaneGeometry(LANE_WIDTH * 0.9, 2),
@@ -305,14 +309,45 @@ function createObstacleMesh(typeName) {
 // Special spawn functions for multi-lane / special obstacles
 // ---------------------------------------------------------------------------
 
+function createIceWallSegment(geo, veinGeo) {
+  const group = new THREE.Group();
+  const wall = new THREE.Mesh(geo, pool.wallMat);
+  wall.position.y = ICE_WALL_HEIGHT / 2;
+  group.add(wall);
+  for (let i = 0; i < 3; i++) {
+    const vein = new THREE.Mesh(veinGeo, pool.veinMat);
+    vein.position.y = 0.5 + i * 0.8;
+    vein.rotation.z = (Math.random() - 0.5) * 0.1;
+    group.add(vein);
+  }
+  applyCastShadow(group);
+  return group;
+}
+
 function spawnIceWall(scene, worldZ) {
   const openLane = Math.floor(Math.random() * 3);
-  const { mesh, height, type } = createObstacleMesh('iceWall');
-  const blockedLanes = [0, 1, 2].filter(l => l !== openLane);
-  const centerX = (LANE_POSITIONS[blockedLanes[0]] + LANE_POSITIONS[blockedLanes[1]]) / 2;
-  mesh.position.set(centerX, TERRAIN_Y, worldZ);
-  scene.add(mesh);
-  activeObstacles.push({ mesh, height, type, typeName: 'iceWall', lane: -1, openLane });
+
+  if (openLane === 1) {
+    // Middle lane open — two separate wall segments with a visible gap
+    const group = new THREE.Group();
+    const leftSeg = createIceWallSegment(pool.wallSingleGeo, pool.veinSingleGeo);
+    leftSeg.position.x = LANE_POSITIONS[0];
+    group.add(leftSeg);
+    const rightSeg = createIceWallSegment(pool.wallSingleGeo, pool.veinSingleGeo);
+    rightSeg.position.x = LANE_POSITIONS[2];
+    group.add(rightSeg);
+    group.position.set(0, TERRAIN_Y, worldZ);
+    scene.add(group);
+    activeObstacles.push({ mesh: group, height: ICE_WALL_HEIGHT, type: 'ground', typeName: 'iceWall', lane: -1, openLane });
+  } else {
+    // Edge lane open — single wide wall centered over 2 adjacent blocked lanes
+    const { mesh, height, type } = createObstacleMesh('iceWall');
+    const blockedLanes = [0, 1, 2].filter(l => l !== openLane);
+    const centerX = (LANE_POSITIONS[blockedLanes[0]] + LANE_POSITIONS[blockedLanes[1]]) / 2;
+    mesh.position.set(centerX, TERRAIN_Y, worldZ);
+    scene.add(mesh);
+    activeObstacles.push({ mesh, height, type, typeName: 'iceWall', lane: -1, openLane });
+  }
 }
 
 function spawnWindGust(scene, worldZ) {

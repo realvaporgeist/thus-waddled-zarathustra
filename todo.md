@@ -13,10 +13,10 @@
 
 ## Bug Fixes
 
-- [ ] **Magnet fish movement** — all fish in render distance shift lanes instead of just closest ones flying toward penguin; fish get stuck between lanes when power-up ends
-- [ ] **Fish collection height** — fish at higher elevation auto-collected without jumping (should require a jump)
-- [ ] **Ice walls inconsistent** — sometimes cover all 3 lanes instead of 2, collision is unreliable (can jump through sometimes, other times take damage)
-- [ ] **Power-up activation UX** — cycling between two with button/E is confusing; show both power-up buttons always, tap to activate; separate keyboard bindings on desktop
+- [x] **Magnet fish movement** — all fish in render distance shift lanes instead of just closest ones flying toward penguin; fish get stuck between lanes when power-up ends
+- [x] **Fish collection height** — fish at higher elevation auto-collected without jumping (should require a jump)
+- [x] **Ice walls inconsistent** — sometimes cover all 3 lanes instead of 2, collision is unreliable (can jump through sometimes, other times take damage)
+- [x] **Power-up activation UX** — cycling between two with button/E is confusing; show both power-up buttons always, tap to activate; separate keyboard bindings on desktop
 
 ## Polish
 

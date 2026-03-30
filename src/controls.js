@@ -1,5 +1,5 @@
 // src/controls.js
-import { SWIPE_THRESHOLD, SWIPE_MAX_TIME, ABILITY_HOLD_THRESHOLD } from './constants.js';
+import { SWIPE_THRESHOLD, SWIPE_MAX_TIME } from './constants.js';
 
 let onLeft = null;
 let onRight = null;
@@ -9,15 +9,13 @@ let onAction = null;
 let onPause = null;
 let onAbility = null;
 let onAbilityHold = null;
+let onSlowTime = null;
+let onRush = null;
 
 let touchStartX = 0;
 let touchStartY = 0;
 let touchStartTime = 0;
 
-let abilityBtnRef = null;
-let abilityPointerDown = null;
-let abilityPointerUp = null;
-let abilityPointerLeave = null;
 
 export function initControls(callbacks) {
   onLeft = callbacks.onLeft;
@@ -28,29 +26,18 @@ export function initControls(callbacks) {
   onPause = callbacks.onPause;
   onAbility = callbacks.onAbility;
   onAbilityHold = callbacks.onAbilityHold;
+  onSlowTime = callbacks.onSlowTime;
+  onRush = callbacks.onRush;
 
   window.addEventListener('keydown', handleKeyDown);
   window.addEventListener('touchstart', handleTouchStart, { passive: false });
   window.addEventListener('touchend', handleTouchEnd, { passive: false });
 
-  // Earned ability button
-  abilityBtnRef = document.getElementById('ability-btn');
-  if (abilityBtnRef) {
-    let holdTimer = null;
-    let held = false;
-    abilityPointerDown = () => {
-      held = false;
-      holdTimer = setTimeout(() => { held = true; callbacks.onAbilityHold?.(); }, ABILITY_HOLD_THRESHOLD * 1000);
-    };
-    abilityPointerUp = () => {
-      clearTimeout(holdTimer);
-      if (!held) callbacks.onAbility?.();
-    };
-    abilityPointerLeave = () => clearTimeout(holdTimer);
-    abilityBtnRef.addEventListener('pointerdown', abilityPointerDown);
-    abilityBtnRef.addEventListener('pointerup', abilityPointerUp);
-    abilityBtnRef.addEventListener('pointerleave', abilityPointerLeave);
-  }
+  // Earned ability buttons (tap to activate)
+  const slowBtn = document.getElementById('ability-slow-btn');
+  const rushBtn = document.getElementById('ability-rush-btn');
+  if (slowBtn) slowBtn.addEventListener('pointerup', () => callbacks.onSlowTime?.());
+  if (rushBtn) rushBtn.addEventListener('pointerup', () => callbacks.onRush?.());
 }
 
 function handleKeyDown(e) {
@@ -82,8 +69,11 @@ function handleKeyDown(e) {
     case 'KeyP':
       onPause?.();
       break;
+    case 'KeyQ':
+      onSlowTime?.();
+      break;
     case 'KeyE':
-      onAbility?.();
+      onRush?.();
       break;
   }
 }
@@ -128,13 +118,5 @@ export function destroyControls() {
   window.removeEventListener('touchstart', handleTouchStart);
   window.removeEventListener('touchend', handleTouchEnd);
 
-  if (abilityBtnRef) {
-    if (abilityPointerDown) abilityBtnRef.removeEventListener('pointerdown', abilityPointerDown);
-    if (abilityPointerUp) abilityBtnRef.removeEventListener('pointerup', abilityPointerUp);
-    if (abilityPointerLeave) abilityBtnRef.removeEventListener('pointerleave', abilityPointerLeave);
-    abilityBtnRef = null;
-    abilityPointerDown = null;
-    abilityPointerUp = null;
-    abilityPointerLeave = null;
-  }
+  // Ability buttons are recreated on each game start, no cleanup needed here
 }

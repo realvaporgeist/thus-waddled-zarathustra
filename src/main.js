@@ -11,7 +11,7 @@ import {
 import { initControls } from './controls.js';
 import { spawnObstacle, updateObstacles, getActiveObstacles, clearObstacles, setObstacleDrawDistance } from './obstacles.js';
 import { checkCollision } from './collision.js';
-import { spawnCollectibles, updateCollectibles, checkCollectiblePickup, clearCollectibles, applyMagnetPull, autoCollectAllFish, setWeatherCollectibleModifiers } from './collectibles.js';
+import { spawnCollectibles, updateCollectibles, checkCollectiblePickup, clearCollectibles, applyMagnetPull, snapFishToNearestLane, autoCollectAllFish, setWeatherCollectibleModifiers, setActivePowerupState, boostPowerupSpawns, forceSpawnPowerupNearby } from './collectibles.js';
 import { createHUD, updateScore, updateHearts, updateFishCount, updateDistance, showHUD, showMultiplier, showToast } from './hud.js';
 import {
   createStartScreen, hideStartScreen, showStartScreen,
@@ -36,7 +36,7 @@ import {
   initPowerups, updatePowerups, getActiveEffects, getSpeedMultiplier,
   getScoreMultiplier, isShieldActive, hitShield, isInvincibleFromPowerup,
   isMagnetActive, isDiscoActive, activateSlowTime, activateRush,
-  activateShield, activateMagnet, cycleAbility, getSelectedAbility, cleanupPowerups,
+  activateShield, activateMagnet, getDiscoTimer, cleanupPowerups,
 } from './powerups.js';
 import { initParticles, updateParticles, emitParticles, clearParticles } from './particles.js';
 import { initAurora, updateAurora } from './aurora.js';
@@ -51,6 +51,7 @@ import {
   triggerScreenShake, updateScreenEffects, getShakeOffset,
   showRedVignette, setSpeedLinesVisible,
   showSlowTimeFilter, hideSlowTimeFilter,
+  showRushFilter, hideRushFilter,
   startDiscoVisuals, updateDiscoVisuals, stopDiscoVisuals,
 } from './scene.js';
 import { setAuroraDiscoMode, pulseAurora } from './aurora.js';
@@ -59,6 +60,7 @@ import {
   updateComboBar, flashComboTierUp, updatePowerupIcons, updateAbilityButton,
   showBossWarning, hideBossWarning, showBossHealthBar,
   updateBossBar, hideBossBar,
+  showDiscoTimer, updateDiscoTimer, hideDiscoTimer,
 } from './hud.js';
 import {
   initBosses, updateBosses, isBossActive, isBossEncounter,
@@ -79,7 +81,7 @@ import {
   COMBO_FILL_NEAR_MISS, COMBO_FILL_FISH, COMBO_FILL_GOLDEN_FISH, COMBO_FILL_NO_DAMAGE_100M,
   COMBO_FILL_BOSS_SURVIVE,
   SHIELD_SHATTER_PARTICLES, MAGNET_VORTEX_PARTICLES, RUSH_ACTIVATE_PARTICLES, SLOW_TIME_PARTICLES,
-  DISCO_SCORE_MULTIPLIER,
+  DISCO_SCORE_MULTIPLIER, DISCO_DURATION,
 } from './constants.js';
 
 // ---------------------------------------------------------------------------
@@ -195,38 +197,30 @@ initControls({
   onSlide: () => { if (gameState === 'playing') slide(); },
   onAction: () => { /* reserved for future use */ },
   onPause: () => { if (gameState === 'playing' || gameState === 'paused') togglePause(); },
-  onAbility: () => {
+  onAbility: () => {},
+  onAbilityHold: () => {},
+  onSlowTime: () => {
     if (gameState !== 'playing' || isHardcoreMode()) return;
-    if (isSlowTimeCharged() && isRushCharged()) {
-      cycleAbility();
-    } else {
-      activateSelectedAbility();
+    const effects = getActiveEffects();
+    if (isSlowTimeCharged() && !effects.slowTime) {
+      consumeSlowTimeCharge();
+      activateSlowTime();
+      emitParticles({ ...SLOW_TIME_PARTICLES, position: getPenguinGroup().position.clone() });
+      showToast('ETERNAL RECURRENCE', 1500);
     }
   },
-  onAbilityHold: () => {
+  onRush: () => {
     if (gameState !== 'playing' || isHardcoreMode()) return;
-    activateSelectedAbility();
+    const effects = getActiveEffects();
+    if (isRushCharged() && !effects.rush) {
+      consumeRushCharge();
+      activateRush();
+      emitParticles({ ...RUSH_ACTIVATE_PARTICLES, position: getPenguinGroup().position.clone() });
+      showToast('\u00dcBERMENSCH RUSH!', 1500);
+    }
   },
 });
 
-// ---------------------------------------------------------------------------
-// Earned ability helper
-// ---------------------------------------------------------------------------
-function activateSelectedAbility() {
-  const sel = getSelectedAbility();
-  const effects = getActiveEffects();
-  if (sel === 'slowTime' && isSlowTimeCharged() && !effects.slowTime) {
-    consumeSlowTimeCharge();
-    activateSlowTime();
-    emitParticles({ ...SLOW_TIME_PARTICLES, position: getPenguinGroup().position.clone() });
-    showToast('ETERNAL RECURRENCE', 1500);
-  } else if (sel === 'rush' && isRushCharged() && !effects.rush) {
-    consumeRushCharge();
-    activateRush();
-    emitParticles({ ...RUSH_ACTIVATE_PARTICLES, position: getPenguinGroup().position.clone() });
-    showToast('\u00dcBERMENSCH RUSH!', 1500);
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Start / restart helpers
@@ -261,6 +255,7 @@ function startGame() {
   cleanupCombo();
   hideShieldVisual();
   hideSlowTimeFilter();
+  hideRushFilter();
   stopDiscoVisuals();
   setAuroraDiscoMode(false);
   discoTriggeredThisRun = false;
@@ -282,20 +277,51 @@ function startGame() {
     onDiscoStart: () => {
       startDiscoVisuals();
       setAuroraDiscoMode(true);
+      setSpeedLinesVisible(true);
+      triggerScreenShake(SCREEN_SHAKE_INTENSITY_HEAVY);
+      // Big burst of particles
+      const pos = getPenguinGroup()?.position?.clone();
+      if (pos) {
+        emitParticles({ count: 40, color: 0xff00ff, duration: 0.8, speed: 8, type: 'burst', position: pos });
+        emitParticles({ count: 30, color: 0xffff00, duration: 0.6, speed: 6, type: 'spiral', position: pos.clone() });
+      }
       showToast('\u{1FA69} DISCO MODE! \u{1FA69}', 3000);
+      showDiscoTimer();
       discoTriggeredThisRun = true;
     },
     onDiscoEnd: () => {
       stopDiscoVisuals();
       setAuroraDiscoMode(false);
+      hideSlowTimeFilter();
+      hideRushFilter();
+      hideDiscoTimer();
+      setSpeedLinesVisible(speed >= MAX_SPEED * SPEED_LINE_THRESHOLD);
     },
     onEffectStart: (key) => {
       if (key === 'slowTime') showSlowTimeFilter();
-      if (key === 'shield') showShieldVisual();
+      if (key === 'rush') { showRushFilter(); setSpeedLinesVisible(true); }
+      if (key === 'shield') { showShieldVisual(); boostPowerupSpawns(); }
+      if (key === 'magnet') boostPowerupSpawns();
+
+      // Disco opportunity — when 3/4 active, force-spawn the missing collectible
+      const eff = getActiveEffects();
+      const activeCount = [eff.shield, eff.magnet, eff.slowTime, eff.rush].filter(Boolean).length;
+      if (activeCount === 3) {
+        const missingType = !eff.shield ? 'shield' : !eff.magnet ? 'magnet' : null;
+        if (missingType) {
+          const pg = getPenguinGroup();
+          if (pg) {
+            forceSpawnPowerupNearby(scene, missingType, pg.position.z, getCurrentLane());
+            showToast('DISCO AWAITS!', 2000);
+          }
+        }
+      }
     },
     onEffectEnd: (key) => {
       if (key === 'slowTime') hideSlowTimeFilter();
+      if (key === 'rush') { hideRushFilter(); setSpeedLinesVisible(speed >= MAX_SPEED * SPEED_LINE_THRESHOLD); }
       if (key === 'shield') hideShieldVisual();
+      if (key === 'magnet') snapFishToNearestLane();
     },
   });
   lastDamageDistanceForCombo = 0;
@@ -350,6 +376,7 @@ function gameOver() {
   playGameOver();
   playTrack('credits');
   stopDiscoVisuals();
+  hideDiscoTimer();
   setAuroraDiscoMode(false);
   cleanupDread();
   cleanupCombo();
@@ -414,6 +441,7 @@ function gameOver() {
 function returnToMainMenu() {
   gameState = 'menu';
   stopDiscoVisuals();
+  hideDiscoTimer();
   setAuroraDiscoMode(false);
   cleanupDread();
   cleanupCombo();
@@ -494,7 +522,8 @@ function gameLoop(now) {
     updatePowerups(delta);
     const effects = getActiveEffects();
     updatePowerupIcons(effects);
-    updateAbilityButton(isSlowTimeCharged(), isRushCharged(), getSelectedAbility());
+    updateAbilityButton(isSlowTimeCharged(), isRushCharged(), effects);
+    setActivePowerupState(effects.shield, effects.magnet);
 
     if (isDreadActive()) {
       const dreadProgress = 1 - (getDreadTimer() / DREAD_DURATION);
@@ -678,7 +707,7 @@ function gameLoop(now) {
 
     // Magnet pull — attract fish from adjacent lanes
     if (isMagnetActive()) {
-      applyMagnetPull(getCurrentLane(), delta);
+      applyMagnetPull(getCurrentLane(), getPenguinGroup().position.z, delta);
     }
 
     // Shield visual rotation
@@ -686,7 +715,7 @@ function gameLoop(now) {
       updateShieldVisual(delta);
     }
 
-    // Disco mode — auto-collect all fish and update visuals
+    // Disco mode — auto-collect all fish, update visuals, show timer
     if (isDiscoActive()) {
       const penguinPos = getPenguinGroup()?.position;
       if (penguinPos) {
@@ -697,6 +726,7 @@ function gameLoop(now) {
         }
       }
       updateDiscoVisuals(delta);
+      updateDiscoTimer(getDiscoTimer());
     }
   }
 

@@ -1,5 +1,5 @@
 // src/hud.js
-import { MAX_HEARTS, SHIELD_MAX_DURATION, MAGNET_DURATION } from './constants.js';
+import { MAX_HEARTS, SHIELD_MAX_DURATION, MAGNET_DURATION, SLOW_TIME_DURATION, RUSH_DURATION, DISCO_DURATION } from './constants.js';
 
 let hudContainer = null;
 let heartsEl = null;
@@ -70,12 +70,20 @@ export function createHUD(onPause) {
   `;
   document.body.appendChild(powerupIcons);
 
-  // Earned ability button (bottom-right)
-  const abilityBtn = document.createElement('button');
-  abilityBtn.id = 'ability-btn';
-  abilityBtn.style.display = 'none';
-  abilityBtn.textContent = '\u231B';
-  document.body.appendChild(abilityBtn);
+  // Earned ability buttons (bottom-right, always visible when charged or active)
+  const abilityContainer = document.createElement('div');
+  abilityContainer.id = 'ability-buttons';
+  abilityContainer.innerHTML = `
+    <button id="ability-slow-btn" class="ability-btn ability-slow" style="display:none">
+      <svg class="ability-ring" viewBox="0 0 60 60"><circle cx="30" cy="30" r="27" fill="none" stroke="#6a5acd" stroke-width="3" stroke-dasharray="170" stroke-dashoffset="0" transform="rotate(-90 30 30)"/></svg>
+      <span class="ability-icon">\u231B</span><span class="ability-key">Q</span>
+    </button>
+    <button id="ability-rush-btn" class="ability-btn ability-rush" style="display:none">
+      <svg class="ability-ring" viewBox="0 0 60 60"><circle cx="30" cy="30" r="27" fill="none" stroke="#ffd700" stroke-width="3" stroke-dasharray="170" stroke-dashoffset="0" transform="rotate(-90 30 30)"/></svg>
+      <span class="ability-icon">\u26A1</span><span class="ability-key">E</span>
+    </button>
+  `;
+  document.body.appendChild(abilityContainer);
 
   heartsEl = document.getElementById('hud-hearts');
   scoreEl = document.getElementById('hud-score');
@@ -123,8 +131,9 @@ export function showHUD(visible) {
   if (comboContainer) comboContainer.style.display = visible ? 'block' : 'none';
   const puIcons = document.getElementById('powerup-icons');
   if (puIcons) puIcons.style.display = visible ? 'flex' : 'none';
-  const abilBtn = document.getElementById('ability-btn');
-  if (abilBtn && !visible) abilBtn.style.display = 'none';
+  const abilBtns = document.getElementById('ability-buttons');
+  if (abilBtns && !visible) abilBtns.style.display = 'none';
+  if (abilBtns && visible) abilBtns.style.display = 'flex';
 }
 
 export function showToast(text, duration = 2000) {
@@ -217,22 +226,39 @@ export function updatePowerupIcons(effects) {
   }
 }
 
-export function updateAbilityButton(slowTimeCharged, rushCharged, selected) {
-  const btn = document.getElementById('ability-btn');
-  if (!btn) return;
-  const hasAny = slowTimeCharged || rushCharged;
-  btn.style.display = hasAny ? 'flex' : 'none';
-  if (!hasAny) return;
+export function updateAbilityButton(slowTimeCharged, rushCharged, effects) {
+  const slowBtn = document.getElementById('ability-slow-btn');
+  const rushBtn = document.getElementById('ability-rush-btn');
 
-  if (slowTimeCharged && rushCharged) {
-    btn.textContent = selected === 'slowTime' ? '\u231B' : '\u26A1';
-    btn.className = 'ability-dual';
-  } else if (rushCharged) {
-    btn.textContent = '\u26A1';
-    btn.className = 'ability-rush';
-  } else {
-    btn.textContent = '\u231B';
-    btn.className = 'ability-slow';
+  // Show button if charged OR if the effect is still active
+  if (slowBtn) {
+    const showSlow = slowTimeCharged || effects.slowTime;
+    slowBtn.style.display = showSlow ? 'flex' : 'none';
+    slowBtn.classList.toggle('active', effects.slowTime);
+    slowBtn.disabled = !slowTimeCharged || effects.slowTime;
+    // Countdown ring
+    const ring = slowBtn.querySelector('.ability-ring circle');
+    if (ring && effects.slowTime) {
+      ring.style.strokeDashoffset = (1 - effects.slowTimeTimer / SLOW_TIME_DURATION) * 170;
+      ring.style.opacity = '1';
+    } else if (ring) {
+      ring.style.strokeDashoffset = '0';
+      ring.style.opacity = slowTimeCharged ? '0.4' : '0';
+    }
+  }
+  if (rushBtn) {
+    const showRush = rushCharged || effects.rush;
+    rushBtn.style.display = showRush ? 'flex' : 'none';
+    rushBtn.classList.toggle('active', effects.rush);
+    rushBtn.disabled = !rushCharged || effects.rush;
+    const ring = rushBtn.querySelector('.ability-ring circle');
+    if (ring && effects.rush) {
+      ring.style.strokeDashoffset = (1 - effects.rushTimer / RUSH_DURATION) * 170;
+      ring.style.opacity = '1';
+    } else if (ring) {
+      ring.style.strokeDashoffset = '0';
+      ring.style.opacity = rushCharged ? '0.4' : '0';
+    }
   }
 }
 
@@ -274,4 +300,28 @@ export function updateBossBar(progress) {
 export function hideBossBar() {
   const b = document.getElementById('boss-bar');
   if (b) b.remove();
+}
+
+// ---------------------------------------------------------------------------
+// Disco timer
+// ---------------------------------------------------------------------------
+export function showDiscoTimer() {
+  hideDiscoTimer();
+  const bar = document.createElement('div');
+  bar.id = 'disco-timer';
+  bar.innerHTML = `
+    <div id="disco-timer-label">\u{1FA69} DISCO \u{1FA69}</div>
+    <div id="disco-timer-track"><div id="disco-timer-fill"></div></div>
+  `;
+  document.body.appendChild(bar);
+}
+
+export function updateDiscoTimer(remaining) {
+  const fill = document.getElementById('disco-timer-fill');
+  if (fill) fill.style.width = `${(remaining / DISCO_DURATION) * 100}%`;
+}
+
+export function hideDiscoTimer() {
+  const el = document.getElementById('disco-timer');
+  if (el) el.remove();
 }

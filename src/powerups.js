@@ -2,7 +2,7 @@ import {
   SHIELD_MAX_DURATION, MAGNET_DURATION,
   SLOW_TIME_DURATION, SLOW_TIME_FACTOR,
   RUSH_DURATION, RUSH_SCORE_MULTIPLIER,
-  DISCO_SCORE_MULTIPLIER,
+  DISCO_DURATION, DISCO_SPEED_MULTIPLIER, DISCO_SCORE_MULTIPLIER,
 } from './constants.js';
 
 // Active power-up state
@@ -14,6 +14,7 @@ const active = {
 };
 
 let discoActive = false;
+let discoTimer = 0;
 let onDiscoStart = null;
 let onDiscoEnd = null;
 let onShieldBreak = null;
@@ -76,6 +77,11 @@ function checkDisco() {
   if (active.shield.on && active.magnet.on && active.slowTime.on && active.rush.on) {
     if (!discoActive) {
       discoActive = true;
+      discoTimer = DISCO_DURATION;
+      // Extend all power-up timers to at least the disco duration
+      for (const key of ['shield', 'magnet', 'slowTime', 'rush']) {
+        active[key].timer = Math.max(active[key].timer, DISCO_DURATION);
+      }
       if (onDiscoStart) onDiscoStart();
     }
   }
@@ -84,15 +90,28 @@ function checkDisco() {
 function endDisco() {
   if (discoActive) {
     discoActive = false;
+    discoTimer = 0;
+    // End all power-ups when disco ends
+    for (const key of ['shield', 'magnet', 'slowTime', 'rush']) {
+      if (active[key].on) endEffect(key);
+    }
     if (onDiscoEnd) onDiscoEnd();
   }
 }
 
 export function updatePowerups(delta) {
+  if (discoActive) {
+    // During disco, only the disco timer ticks — all power-ups are frozen
+    discoTimer -= delta;
+    // Sync individual timers for HUD display
+    for (const key of ['shield', 'magnet', 'slowTime', 'rush']) {
+      active[key].timer = discoTimer;
+    }
+    if (discoTimer <= 0) endDisco();
+    return;
+  }
   for (const key of ['shield', 'magnet', 'slowTime', 'rush']) {
     if (!active[key].on) continue;
-    // Shield doesn't drain during disco (invincible)
-    if (key === 'shield' && discoActive) continue;
     active[key].timer -= delta;
     if (active[key].timer <= 0) endEffect(key);
   }
@@ -115,9 +134,12 @@ export function isRushActive() { return active.rush.on; }
 export function isDiscoActive() { return discoActive; }
 
 export function getSpeedMultiplier() {
-  if (active.slowTime.on && !discoActive) return SLOW_TIME_FACTOR;
+  if (discoActive) return DISCO_SPEED_MULTIPLIER;
+  if (active.slowTime.on) return SLOW_TIME_FACTOR;
   return 1;
 }
+
+export function getDiscoTimer() { return discoTimer; }
 
 export function getScoreMultiplier() {
   if (discoActive) return DISCO_SCORE_MULTIPLIER;

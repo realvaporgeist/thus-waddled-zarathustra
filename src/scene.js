@@ -195,8 +195,8 @@ export function showSlowTimeFilter() {
   slowTimeOverlay.id = 'slow-time-overlay';
   slowTimeOverlay.style.cssText = `
     position:fixed;inset:0;z-index:50;pointer-events:none;
-    background:rgba(106,90,205,0.15);
-    mix-blend-mode:color;
+    background:radial-gradient(ellipse at center, rgba(106,90,205,0.08) 0%, rgba(75,0,130,0.25) 100%);
+    animation: slowTimePulse 2s ease-in-out infinite;
     transition:opacity 0.3s;
   `;
   document.body.appendChild(slowTimeOverlay);
@@ -206,6 +206,30 @@ export function hideSlowTimeFilter() {
   if (!slowTimeOverlay) return;
   slowTimeOverlay.remove();
   slowTimeOverlay = null;
+}
+
+// ---------------------------------------------------------------------------
+// Rush visual filter
+// ---------------------------------------------------------------------------
+let rushOverlay = null;
+
+export function showRushFilter() {
+  if (rushOverlay) return;
+  rushOverlay = document.createElement('div');
+  rushOverlay.id = 'rush-overlay';
+  rushOverlay.style.cssText = `
+    position:fixed;inset:0;z-index:50;pointer-events:none;
+    background:radial-gradient(ellipse at center, rgba(255,215,0,0.05) 0%, rgba(255,140,0,0.2) 100%);
+    animation: rushPulse 0.8s ease-in-out infinite;
+    transition:opacity 0.3s;
+  `;
+  document.body.appendChild(rushOverlay);
+}
+
+export function hideRushFilter() {
+  if (!rushOverlay) return;
+  rushOverlay.remove();
+  rushOverlay = null;
 }
 
 // ---------------------------------------------------------------------------
@@ -228,6 +252,8 @@ export function startDiscoVisuals() {
   overlay.style.cssText = `
     position:fixed;inset:0;z-index:45;pointer-events:none;opacity:0;
     transition:opacity 0.3s;
+    border: 4px solid transparent;
+    box-sizing: border-box;
   `;
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.style.opacity = '1');
@@ -240,12 +266,17 @@ export function updateDiscoVisuals(delta) {
     discoStrobeTimer = 0;
     discoColorIndex = (discoColorIndex + 1) % discoStrobeColors.length;
     const color = discoStrobeColors[discoColorIndex];
+    const nextColor = discoStrobeColors[(discoColorIndex + 1) % discoStrobeColors.length];
     directionalLight.color.setHex(color);
-    directionalLight.intensity = 1.2;
+    directionalLight.intensity = 1.5;
 
     const overlay = document.getElementById('disco-overlay');
     if (overlay) {
-      overlay.style.background = `radial-gradient(circle, ${new THREE.Color(color).getStyle()}22, transparent 70%)`;
+      const c = new THREE.Color(color).getStyle();
+      const nc = new THREE.Color(nextColor).getStyle();
+      overlay.style.background = `radial-gradient(ellipse at center, ${c}18 0%, ${c}30 40%, transparent 70%)`;
+      overlay.style.borderColor = c;
+      overlay.style.boxShadow = `inset 0 0 80px ${c}40, inset 0 0 160px ${nc}20`;
     }
   }
 }

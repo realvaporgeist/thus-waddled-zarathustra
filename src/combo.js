@@ -59,8 +59,18 @@ export function updateCombo(delta) {
 export function setDrainPaused(paused) { drainPaused = paused; }
 export function isSlowTimeCharged() { return slowTimeCharged; }
 export function isRushCharged() { return rushCharged; }
-export function consumeSlowTimeCharge() { slowTimeCharged = false; }
-export function consumeRushCharge() { rushCharged = false; }
+export function consumeSlowTimeCharge() {
+  slowTimeCharged = false;
+  // Drain meter so ability must be re-earned
+  meter = Math.max(0, meter - 0.5);
+  lastTier = getComboTierIndex();
+}
+export function consumeRushCharge() {
+  rushCharged = false;
+  // Heavy drain — Übermensch rush is the ultimate ability
+  meter = Math.max(0, meter - 0.75);
+  lastTier = getComboTierIndex();
+}
 
 export function cleanupCombo() {
   meter = 0; lastTier = 0; slowTimeCharged = false; rushCharged = false;

@@ -80,25 +80,25 @@ export const COMBO_TIERS = [
   { name: 'Free Spirit', multiplier: 4.0, threshold: 0.75, color: '#ffd700' },
   { name: 'Übermensch', multiplier: 6.0, threshold: 1.0, color: '#ffd700' },
 ];
-export const COMBO_FILL_NEAR_MISS = 0.15;
-export const COMBO_FILL_FISH = 0.05;
-export const COMBO_FILL_GOLDEN_FISH = 0.12;
-export const COMBO_FILL_BOSS_SURVIVE = 0.25;
-export const COMBO_FILL_NO_DAMAGE_100M = 0.03;
-export const COMBO_DRAIN_BASE = 0.08;
-export const COMBO_DRAIN_MULTIPLIERS = [1.0, 1.0, 1.5, 2.0, 2.5];
+export const COMBO_FILL_NEAR_MISS = 0.08;
+export const COMBO_FILL_FISH = 0.03;
+export const COMBO_FILL_GOLDEN_FISH = 0.08;
+export const COMBO_FILL_BOSS_SURVIVE = 0.20;
+export const COMBO_FILL_NO_DAMAGE_100M = 0.02;
+export const COMBO_DRAIN_BASE = 0.10;
+export const COMBO_DRAIN_MULTIPLIERS = [1.0, 1.2, 1.8, 2.5, 3.5];
 
 // Power-ups — Path Pickups
-export const SHIELD_SPAWN_CHANCE = 0.03;
-export const SHIELD_COOLDOWN = 30;
-export const SHIELD_MAX_DURATION = 20;
-export const MAGNET_SPAWN_CHANCE = 0.025;
-export const MAGNET_COOLDOWN = 35;
+export const SHIELD_SPAWN_CHANCE = 0.02;
+export const SHIELD_COOLDOWN = 45;
+export const SHIELD_MAX_DURATION = 15;
+export const MAGNET_SPAWN_CHANCE = 0.015;
+export const MAGNET_COOLDOWN = 50;
 export const MAGNET_DURATION = 8;
 export const MAGNET_PULL_SPEED = 0.5;
 
 // Power-ups — Earned Abilities
-export const SLOW_TIME_CHARGE_TIER = 2;
+export const SLOW_TIME_CHARGE_TIER = 3;
 export const SLOW_TIME_DURATION = 5;
 export const SLOW_TIME_FACTOR = 0.4;
 export const RUSH_CHARGE_TIER = 4;
@@ -107,8 +107,10 @@ export const RUSH_SCORE_MULTIPLIER = 3;
 export const ABILITY_HOLD_THRESHOLD = 0.5;
 
 // Disco Mode
+export const DISCO_DURATION = 12;
+export const DISCO_SPEED_MULTIPLIER = 1.5;
 export const DISCO_SCORE_MULTIPLIER = 10;
-export const DISCO_STROBE_INTERVAL = 0.4;
+export const DISCO_STROBE_INTERVAL = 0.25;
 
 // Boss Encounters
 export const BOSS_FIRST_DISTANCE = 2000;

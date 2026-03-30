@@ -17,11 +17,15 @@ const _obstacleBox = new THREE.Box3();
 export function checkCollision(penguinPos, penguinSliding, penguinJumping, obstacle) {
   // --- Ice wall: custom wide hitbox with open-lane gap ---
   if (obstacle.typeName === 'iceWall') {
-    const playerLaneX = penguinPos.x;
     const openX = LANE_POSITIONS[obstacle.openLane];
-    if (Math.abs(playerLaneX - openX) < LANE_WIDTH * 0.45) return false;
+    if (Math.abs(penguinPos.x - openX) < LANE_WIDTH * 0.45) return false;
+    // Check player is in a blocked lane
+    const inBlockedLane = [0, 1, 2].some(l =>
+      l !== obstacle.openLane && Math.abs(penguinPos.x - LANE_POSITIONS[l]) < LANE_WIDTH * 0.45
+    );
+    if (!inBlockedLane) return false;
     const dz = Math.abs(penguinPos.z - obstacle.mesh.position.z);
-    return dz < 1.0;
+    return dz < 1.5;
   }
 
   // --- Ice spike: slide-only counter (too tall to jump over) ---

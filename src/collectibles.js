@@ -17,6 +17,7 @@ import {
   MAGNET_COOLDOWN,
   MAGNET_PULL_SPEED,
   LANE_WIDTH,
+  PENGUIN_HEIGHT,
 } from './constants.js';
 import { getActiveObstacles } from './obstacles.js';
 import { QUOTE_DATA } from './achievements.js';
@@ -44,6 +45,17 @@ let goldenFishMult = 1;
 export function setWeatherCollectibleModifiers(bonus, goldMult) {
   fishSpawnBonus = bonus;
   goldenFishMult = goldMult;
+}
+
+// ---------------------------------------------------------------------------
+// Active power-up state (for clustered spawning)
+// ---------------------------------------------------------------------------
+let shieldActive = false;
+let magnetActive = false;
+
+export function setActivePowerupState(shield, magnet) {
+  shieldActive = shield;
+  magnetActive = magnet;
 }
 
 // ---------------------------------------------------------------------------
@@ -276,15 +288,18 @@ export function spawnCollectibles(scene, worldZ, elapsed) {
     return;
   }
 
-  if (shieldCooldownTimer <= 0 && Math.random() < SHIELD_SPAWN_CHANCE) {
+  // Power-up spawns — slightly boosted when the other collectible power-up is active
+  const shieldChance = magnetActive ? SHIELD_SPAWN_CHANCE * 2 : SHIELD_SPAWN_CHANCE;
+  const magnetChance = shieldActive ? MAGNET_SPAWN_CHANCE * 2 : MAGNET_SPAWN_CHANCE;
+  if (shieldCooldownTimer <= 0 && Math.random() < shieldChance) {
     spawnShieldPickup(scene, spawnZ, getFreeLane(spawnZ));
-    shieldCooldownTimer = SHIELD_COOLDOWN;
+    shieldCooldownTimer = magnetActive ? SHIELD_COOLDOWN * 0.6 : SHIELD_COOLDOWN;
     nextSpawnZ = worldZ - 15;
     return;
   }
-  if (magnetCooldownTimer <= 0 && Math.random() < MAGNET_SPAWN_CHANCE) {
+  if (magnetCooldownTimer <= 0 && Math.random() < magnetChance) {
     spawnMagnetPickup(scene, spawnZ, getFreeLane(spawnZ));
-    magnetCooldownTimer = MAGNET_COOLDOWN;
+    magnetCooldownTimer = shieldActive ? MAGNET_COOLDOWN * 0.6 : MAGNET_COOLDOWN;
     nextSpawnZ = worldZ - 15;
     return;
   }
@@ -387,7 +402,8 @@ export function checkCollectiblePickup(penguinPos, penguinLane, scene) {
     const mesh = col.mesh;
     const dz = Math.abs(mesh.position.z - penguinPos.z);
     const dx = Math.abs(mesh.position.x - penguinPos.x);
-    if (dz < 1.5 && dx < 1.5) {
+    const dy = mesh.position.y - penguinPos.y;
+    if (dz < 1.5 && dx < 1.5 && dy < PENGUIN_HEIGHT + 0.8 && dy > -1.0) {
       col.collected = true;
       col.collectTime = 0;
       // Spawn visual effect
@@ -410,15 +426,34 @@ export function clearCollectibles(scene) {
   magnetCooldownTimer = 0;
 }
 
-export function applyMagnetPull(playerLane, delta) {
+export function applyMagnetPull(playerLane, penguinZ, delta) {
   const playerX = LANE_POSITIONS[playerLane];
   for (const c of activeCollectibles) {
     if (c.collected || (c.type !== 'fish' && c.type !== 'goldenFish')) continue;
+    // Only pull fish that are nearby in Z (ahead of or just behind the player)
+    const dz = c.mesh.position.z - penguinZ;
+    if (dz < -20 || dz > 3) continue;
     const dx = Math.abs(c.mesh.position.x - playerX);
-    if (dx > 0.5 && dx < LANE_WIDTH * 2) {
+    if (dx < 0.3) {
+      // Snap to player lane when close enough
+      c.mesh.position.x = playerX;
+    } else if (dx < LANE_WIDTH * 2) {
       const dir = playerX > c.mesh.position.x ? 1 : -1;
       c.mesh.position.x += dir * (LANE_WIDTH / MAGNET_PULL_SPEED) * delta;
     }
+  }
+}
+
+export function snapFishToNearestLane() {
+  for (const c of activeCollectibles) {
+    if (c.collected || (c.type !== 'fish' && c.type !== 'goldenFish')) continue;
+    let nearestX = LANE_POSITIONS[0];
+    let nearestDist = Math.abs(c.mesh.position.x - LANE_POSITIONS[0]);
+    for (let i = 1; i < LANE_POSITIONS.length; i++) {
+      const d = Math.abs(c.mesh.position.x - LANE_POSITIONS[i]);
+      if (d < nearestDist) { nearestDist = d; nearestX = LANE_POSITIONS[i]; }
+    }
+    c.mesh.position.x = nearestX;
   }
 }
 
@@ -433,6 +468,25 @@ export function autoCollectAllFish(penguinPos, scene) {
     }
   }
   return collected;
+}
+
+// ---------------------------------------------------------------------------
+// Disco-opportunity helpers
+// ---------------------------------------------------------------------------
+export function boostPowerupSpawns() {
+  // When one collectible power-up activates, reset the other's cooldown
+  shieldCooldownTimer = 0;
+  magnetCooldownTimer = 0;
+}
+
+export function forceSpawnPowerupNearby(scene, type, playerZ, lane) {
+  // Spawn a power-up pickup ~12 units ahead of the player
+  const z = playerZ - 12;
+  if (type === 'shield') {
+    spawnShieldPickup(scene, z, lane);
+  } else if (type === 'magnet') {
+    spawnMagnetPickup(scene, z, lane);
+  }
 }
 
 export function spawnFishAt(scene, z, lane) {

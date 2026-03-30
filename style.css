@@ -721,6 +721,49 @@ body {
   transition: width 0.1s linear;
 }
 
+/* Disco timer */
+#disco-timer {
+  position: fixed;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 260px;
+  z-index: 200;
+  text-align: center;
+  pointer-events: none;
+}
+#disco-timer-label {
+  font-size: 14px;
+  font-weight: bold;
+  color: #ffd700;
+  text-shadow: 0 0 10px #ff00ff, 0 0 20px #00ffff;
+  margin-bottom: 3px;
+  animation: discoLabelPulse 0.5s ease-in-out infinite alternate;
+}
+@keyframes discoLabelPulse {
+  from { text-shadow: 0 0 10px #ff00ff, 0 0 20px #00ffff; }
+  to { text-shadow: 0 0 20px #ffff00, 0 0 30px #ff0040; }
+}
+#disco-timer-track {
+  height: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 3px;
+  overflow: hidden;
+}
+#disco-timer-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #ff0040, #ff00ff, #4080ff, #00ff80, #ffff00, #ff0040);
+  background-size: 200% 100%;
+  animation: discoFillShift 1s linear infinite;
+  transition: width 0.2s linear;
+}
+@keyframes discoFillShift {
+  from { background-position: 0% 0%; }
+  to { background-position: 200% 0%; }
+}
+
 /* Combo meter */
 #combo-container {
   position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
@@ -772,27 +815,35 @@ body {
 }
 .pu-ring circle { transition: stroke-dashoffset 0.2s linear; }
 
-#ability-btn {
+#ability-buttons {
   position: fixed;
   bottom: 40px;
   right: 12px;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  font-size: 20px;
   display: flex;
+  gap: 8px;
+  z-index: 100;
+}
+.ability-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  border: 2px solid rgba(255,255,255,0.8);
+  font-size: 18px;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 100;
-  background: radial-gradient(circle, #555, #333);
   color: #fff;
   touch-action: manipulation;
+  transition: transform 0.1s, box-shadow 0.15s;
 }
-.ability-slow { background: radial-gradient(circle, #6a5acd, #483d8b) !important; }
-.ability-rush { background: radial-gradient(circle, #ffd700, #ff8c00) !important; box-shadow: 0 0 12px rgba(255,215,0,0.6); }
-.ability-dual { background: radial-gradient(circle, #ffd700, #ff8c00) !important; box-shadow: 0 0 16px rgba(255,215,0,0.8); }
+.ability-btn:active { transform: scale(0.92); }
+.ability-btn .ability-icon { font-size: 20px; line-height: 1; }
+.ability-btn .ability-key { font-size: 9px; opacity: 0.7; font-family: monospace; margin-top: 2px; }
+@media (pointer: coarse) { .ability-btn .ability-key { display: none; } }
+.ability-btn.ability-slow { background: radial-gradient(circle, #6a5acd, #483d8b); box-shadow: 0 0 10px rgba(106,90,205,0.5); }
+.ability-btn.ability-rush { background: radial-gradient(circle, #ffd700, #ff8c00); box-shadow: 0 0 12px rgba(255,215,0,0.6); }
 
 /* Boss encounter */
 #boss-warning {
@@ -825,6 +876,36 @@ body {
 @keyframes boss-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* Power-up screen overlays */
+@keyframes slowTimePulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+@keyframes rushPulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* Ability button countdown ring */
+.ability-btn { position: relative; overflow: visible; }
+.ability-btn .ability-ring {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  pointer-events: none;
+}
+.ability-btn .ability-ring circle {
+  transition: stroke-dashoffset 0.2s linear;
+}
+.ability-btn.active {
+  animation: abilityGlow 0.6s ease-in-out infinite alternate;
+}
+@keyframes abilityGlow {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.4); }
 }
 #boss-bar {
   position: fixed;
